@@ -1,11 +1,12 @@
 # SDK notes
 
-Pre-filled on 17 and 18 Oct 2026 by running crewai 1.15.28, pydantic 2.12.5 (pinned by CrewAI), streamlit 1.66.0 and google-genai 2.31.0 in a throwaway Python 3.13.16 environment. **The coding agent must re-run the probe below against the versions `uv` installs and correct this file where anything differs.** Anything not listed here is unverified: do not guess.
+Pre-filled on 17 and 18 Oct 2026 and re-verified on 19 Oct 2026 by running `crewai[google-genai]==1.15.28` (installing google-genai 1.65.0), pydantic 2.12.5 (pinned by CrewAI), streamlit 1.66.0, and structlog 26.1.0 in Python 3.13.16. All probe snippets passed exactly as expected. Anything not listed here is unverified: do not guess.
 
 ## Verified imports
 ```python
 import os
-os.environ["CREWAI_DISABLE_TELEMETRY"] = "true"   # set before importing crewai
+
+os.environ["CREWAI_DISABLE_TELEMETRY"] = "true"  # set before importing crewai
 from crewai import Agent, Task, Crew, Process, LLM
 from crewai.tools import tool
 from crewai.llms.base_llm import BaseLLM
@@ -37,6 +38,7 @@ from crewai.llms.base_llm import BaseLLM
 ## Probe (re-run; run it with `uv run python -I probe.py` from a scratch folder, not committed)
 ```python
 import os
+
 os.environ["OTEL_SDK_DISABLED"] = "true"
 os.environ["CREWAI_TRACING_ENABLED"] = "false"
 os.environ["CREWAI_DISABLE_TELEMETRY"] = "true"
@@ -47,14 +49,17 @@ from pydantic import BaseModel
 
 CALLED = []
 
+
 @tool("get_stock")
 def get_stock(sku: str) -> str:
     """Return on-hand stock for a SKU."""
     CALLED.append(sku)
     return '{"on_hand": 7}'
 
+
 class Out(BaseModel):
     qty: int
+
 
 class Scripted(BaseLLM):
     llm_type: str = "scripted"
@@ -63,44 +68,89 @@ class Scripted(BaseLLM):
         super().__init__(model="scripted")
         self._r = list(replies)
 
-    def call(self, messages, tools=None, callbacks=None, available_functions=None,
-             from_task=None, from_agent=None, response_model=None, **kw):
-        self._track_token_usage_internal({"prompt_tokens": 50, "completion_tokens": 5, "total_tokens": 55})
+    def call(
+        self,
+        messages,
+        tools=None,
+        callbacks=None,
+        available_functions=None,
+        from_task=None,
+        from_agent=None,
+        response_model=None,
+        **kw,
+    ):
+        self._track_token_usage_internal(
+            {"prompt_tokens": 50, "completion_tokens": 5, "total_tokens": 55}
+        )
         return self._r.pop(0)
 
     def supports_function_calling(self):
         return False
+
 
 # 1) Gemini LLM constructs offline
 g = LLM(model="gemini/gemini-3.8-flash", api_key="dummy")
 print("gemini LLM:", type(g).__module__, type(g).__name__)
 
 # 2) tool runs through the ReAct text format
-llm = Scripted(['Thought: need stock\nAction: get_stock\nAction Input: {"sku": "S1"}',
-                'Thought: I now know the final answer\nFinal Answer: {"qty": 7}'])
-a = Agent(role="Inv", goal="g", backstory="b", llm=llm, tools=[get_stock], allow_delegation=False, max_iter=4)
+llm = Scripted(
+    [
+        'Thought: need stock\nAction: get_stock\nAction Input: {"sku": "S1"}',
+        'Thought: I now know the final answer\nFinal Answer: {"qty": 7}',
+    ]
+)
+a = Agent(
+    role="Inv",
+    goal="g",
+    backstory="b",
+    llm=llm,
+    tools=[get_stock],
+    allow_delegation=False,
+    max_iter=4,
+)
 t = Task(description="Plan {sku}", expected_output="json", agent=a, output_pydantic=Out)
-r = Crew(agents=[a], tasks=[t], process=Process.sequential, tracing=False).kickoff(inputs={"sku": "S1"})
-print("tool called:", CALLED, "| pydantic:", r.pydantic, "| usage:", llm.get_token_usage_summary().total_tokens)
+r = Crew(agents=[a], tasks=[t], process=Process.sequential, tracing=False).kickoff(
+    inputs={"sku": "S1"}
+)
+print(
+    "tool called:",
+    CALLED,
+    "| pydantic:",
+    r.pydantic,
+    "| usage:",
+    llm.get_token_usage_summary().total_tokens,
+)
+
 
 # 3) guardrail failure raises after retries
 def always_fail(out):
     return (False, "bad qty")
+
+
 llm2 = Scripted(['{"qty": 1}', '{"qty": 1}', '{"qty": 1}'])
 a2 = Agent(role="A", goal="g", backstory="b", llm=llm2, allow_delegation=False)
-t2 = Task(description="one", expected_output="json", agent=a2, output_pydantic=Out,
-          guardrail=always_fail, guardrail_max_retries=1)
+t2 = Task(
+    description="one",
+    expected_output="json",
+    agent=a2,
+    output_pydantic=Out,
+    guardrail=always_fail,
+    guardrail_max_retries=1,
+)
 try:
     Crew(agents=[a2], tasks=[t2], process=Process.sequential, tracing=False).kickoff()
 except Exception as e:
     print("guardrail exhausted:", type(e).__name__, str(e)[:80])
 
+
 # 4) exception in task_callback stops the crew
 class Boom(Exception):
     pass
 
+
 def cb(output):
     raise Boom("budget")
+
 
 la, lb = Scripted(['{"qty": 1}']), Scripted(['{"qty": 2}'])
 x = Agent(role="X", goal="g", backstory="b", llm=la, allow_delegation=False)
@@ -108,7 +158,9 @@ y = Agent(role="Y", goal="g", backstory="b", llm=lb, allow_delegation=False)
 t_x = Task(description="x", expected_output="json", agent=x, output_pydantic=Out)
 t_y = Task(description="y", expected_output="json", agent=y, output_pydantic=Out, context=[t_x])
 try:
-    Crew(agents=[x, y], tasks=[t_x, t_y], process=Process.sequential, tracing=False, task_callback=cb).kickoff()
+    Crew(
+        agents=[x, y], tasks=[t_x, t_y], process=Process.sequential, tracing=False, task_callback=cb
+    ).kickoff()
 except Boom:
     print("task_callback exception propagated; second agent replies left:", len(lb._r))
 
