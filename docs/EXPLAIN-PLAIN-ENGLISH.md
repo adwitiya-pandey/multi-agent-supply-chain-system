@@ -50,4 +50,26 @@ Large Language Models frequently hallucinate subtle, non-standard fields (such a
 ### 3-Sentence Interview Answer
 I implemented strict Pydantic v2 message schemas with `extra="forbid"` to ensure agents cannot pass hallucinated or unauthorized fields between tasks. I built a fail-closed, append-only JSONL audit log and a structured JSON logging pipeline that strictly filters out prompts, hostile note text, and secrets. This guarantees schema integrity, prevents prompt-injection payload leakage into logs, and enforces complete operational accountability.
 
+---
+
+## T3: Supply Database, Scenario Synthesis, and Defense-in-Depth Read-Only Access
+
+### Real-World Analogy
+Imagine a bank branch allowing researchers to inspect historical ledger transactions. The bank doesn't hand researchers a master key to the vault or a pen to rewrite ledger entries; instead, researchers view laminated read-only ledger sheets behind three layers of bulletproof glass, while bank tellers hand over only specific pre-approved summary cards.
+
+### Why `mode=ro`, `query_only`, and the Authorizer Matter, and Why Agents Get Fixed Functions Instead of SQL
+1. **`mode=ro` (OS/Filesystem level)**: Tells SQLite to open the file descriptor strictly in read-only mode, blocking any OS-level file modifications.
+2. **`PRAGMA query_only=ON` (Engine level)**: Instructs SQLite's query planner to refuse any database-modifying statement (`INSERT`, `UPDATE`, `DELETE`, `CREATE`, `DROP`).
+3. **`sqlite3` Authorizer (Callback level)**: A gatekeeper hook executed before statement compilation that explicitly permits only `SQLITE_SELECT`, `SQLITE_READ`, and `SQLITE_FUNCTION`, and returns `SQLITE_DENY` for any write, drop, or database-attach attempts (`ATTACH DATABASE`).
+4. **Fixed Functions vs. LLM SQL**: If agents were given a generic SQL execution tool, an LLM could hallucinate arbitrary joins, leak database schema internals, or fall victim to SQL injection through untrusted text in supplier notes. By providing fixed Python query functions (`get_sales_window`, `get_inventory`, `get_supplier_options`), the system eliminates the SQL attack surface entirely.
+
+### How the Code Works
+- `scripts/build_db.py` creates a clean SQLite schema (`meta`, `warehouses`, `skus`, `suppliers`, `sku_suppliers`, `sales_daily`, `inventory`, `market_signals`) with CHECK constraints and seeds 120 days of deterministic data for 12 SKUs, 3 warehouses, and 5 suppliers.
+- Scenarios S01 through S10 are defined in `data/scenarios/` and applied as deterministic patches (e.g. insolvent primary supplier in S02, demand spike in S03, hostile injection note in S05, stockout in S06, missing sales rows in S09).
+- `db.py` implements `get_ro_connection()` utilizing the 3-layer read-only defense.
+
+### 3-Sentence Interview Answer
+I built a reproducible synthetic supply chain database with 10 simulated operational scenarios using SQLite and deterministic random seeding. I enforced a 3-layer read-only security architecture combining URI `mode=ro`, SQLite's `query_only` pragma, and an engine-level authorizer callback. Rather than exposing arbitrary SQL tools to LLMs, I exposed strictly typed Python query functions to permanently eliminate SQL injection and unauthorized data mutation.
+
+
 

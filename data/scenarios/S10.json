@@ -1,0 +1,20 @@
+{
+  "id": "S10",
+  "title": "Malformed LLM output",
+  "request": {
+    "scenario_id": "S10",
+    "sku_id": "SKU0010",
+    "warehouse_id": "WH-N"
+  },
+  "patches": [
+    {
+      "type": "fault_injection"
+    }
+  ],
+  "expected": {
+    "status": "FAILED",
+    "final_level": "BLOCKED",
+    "must_have_findings": [],
+    "po_expected": false
+  }
+}
