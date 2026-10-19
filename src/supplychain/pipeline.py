@@ -52,6 +52,7 @@ from supplychain.policy import calculate_policy_level, compare_levels
 from supplychain.sanitize import is_injection_pattern
 from supplychain.store import save_cycle
 from supplychain.tasks import create_tasks
+from supplychain.tracing import enable_langsmith, record_local_trace
 
 logger = get_logger("pipeline")
 
@@ -178,6 +179,7 @@ def run_cycle(
 ) -> CycleResult:
     """Run one complete five-agent decision cycle per (sku_id, warehouse_id)."""
     settings = get_settings()
+    enable_langsmith(settings)
     cycle_id = cycle_id or _generate_cycle_id()
 
     # Set structlog contextvars for the cycle
@@ -332,6 +334,27 @@ def run_cycle(
         write_audit_event("cycle_failed", cycle_id=cycle_id, reason="FAILED")
 
     cost_report = cost_guard.get_report()
+
+    for agent_role in agents:
+        p_toks = cost_report.prompt_tokens.get(agent_role, 0)
+        cmp_toks = cost_report.completion_tokens.get(agent_role, 0)
+        tot_toks = p_toks + cmp_toks
+        c_val = cost_report.usd.get(agent_role, 0.0)
+        record_local_trace(
+            cycle_id=cycle_id,
+            agent_name=agent_role,
+            task_name=f"{agent_role.lower().replace(' ', '_')}_task",
+            latency_s=0.0,
+            prompt_tokens=p_toks,
+            completion_tokens=cmp_toks,
+            total_tokens=tot_toks,
+            status=status,
+            metadata={
+                "cost_usd": c_val,
+                "scenario_id": request.scenario_id,
+                "mode": mode or "oracle",
+            },
+        )
 
     result = CycleResult(
         cycle_id=cycle_id,

@@ -26,14 +26,13 @@ from crewai.llms.base_llm import BaseLLM
 | Context | `Task(context=[earlier_task])` passes earlier outputs; two sequential tasks with two agents and `output_pydantic` returned `tasks_output[i].pydantic` for each. |
 | Crew options | `Crew(..., process=Process.sequential, tracing=False)` accepted. `Agent(allow_delegation=False, max_iter=n, max_rpm=n, verbose=False)` accepted. |
 | `@tool` | `from crewai.tools import tool`; `@tool("name")` on a typed function with a docstring gives a tool object whose `args_schema` lists the parameters. |
-| OTel packages exist | `opentelemetry-instrumentation-crewai` and `opentelemetry-instrumentation-google-generativeai` (0.62.4) are on PyPI. Whether they give complete LangSmith traces of Gemini calls under CrewAI is **not verified**: T13 reads the LangSmith docs page for CrewAI tracing and T14 checks the real traces. |
+| LangSmith Tracing | Verified in T13 per official LangSmith docs (`https://docs.smith.langchain.com/how_to_guides/tracing/trace_crewai`): using `langsmith==0.14.11` and `opentelemetry-instrumentation-crewai==0.62.4`. Set up with `TracerProvider()`, add `OtelSpanProcessor()`, and call `CrewAIInstrumentor().instrument(tracer_provider=tracer_provider)`. `OTEL_SDK_DISABLED` must be set to `false` when active. If `LANGSMITH_TRACING=false` or key absent, tracing is completely no-op with zero network calls, falling back to structured local spans in `logs/langsmith_traces.jsonl`. |
 
 ## Not verified (decide with evidence, record in `docs/decisions.md` or `docs/open_questions.md`)
 1. Whether CrewAI's native Gemini provider reports token usage including Gemini "thoughts" tokens (T14 compares with the Gemini usage page).
 2. Native function-calling behaviour under Gemini (the offline probe uses the ReAct text format). Live runs (T14) may differ; Gemini 3 models may require "thought signatures" to be passed back between function-call turns, so check the Gemini function-calling docs and the real behaviour before claiming it works.
-3. Whether `OTEL_SDK_DISABLED=true` must be unset for LangSmith tracing; the order of tracer setup versus `CREWAI_DISABLE_TELEMETRY`.
-4. Gemini free-tier rate limits and data-use terms; Azure welcome-offer terms (not needed for this repo).
-5. Behaviour on Python 3.14 (CrewAI requires < 3.14): do not use it.
+3. Gemini free-tier rate limits and data-use terms; Azure welcome-offer terms (not needed for this repo).
+4. Behaviour on Python 3.14 (CrewAI requires < 3.14): do not use it.
 
 ## Probe (re-run; run it with `uv run python -I probe.py` from a scratch folder, not committed)
 ```python
