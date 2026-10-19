@@ -62,3 +62,9 @@ def sanitize_untrusted_text(text: str, max_length: int = 400) -> tuple[str, bool
     # 4. Wrap inside <untrusted> tags
     wrapped = f"<untrusted>{cleaned}</untrusted>"
     return wrapped, flagged
+
+
+def is_injection_pattern(text: str) -> bool:
+    """Check whether text matches any prompt injection heuristic."""
+    _, flagged = sanitize_untrusted_text(text)
+    return flagged
