@@ -137,6 +137,23 @@ Think of a dual-key nuclear launch authorization protocol or commercial loan und
 ### 3-Sentence Interview Answer
 I designed an external human-in-the-loop approval gate where deterministic code owns the escalation floor and agents can only escalate caution, never de-escalate. Only an explicit human decision can finalize a purchase order, with fields copied strictly from stored cycle snapshots rather than user request payloads. Append-only SQLite triggers on all decision tables prevent retroactive modification and guarantee tamper-evident auditability.
 
+---
+
+## T8: Read-Only Agent Tools and Architectural Import Boundaries
+
+### Real-World Analogy
+Think of embassy diplomats who have access to read briefing binders and diplomatic cables, but have no authority to issue passports or deploy military forces. Furthermore, physical turnstiles and security guards prevent embassy staff from even entering the passport printing vaults. AST import tests act as automated security guards ensuring agents can never touch the code that creates binding purchase orders.
+
+### How the Code Works
+- `tools.py` provides typed CrewAI tools decorated with `@tool` (`get_demand_stats`, `get_market_signals`, `get_inventory_position`, `calculate_reorder_plan`, `get_supplier_options`, and `run_consistency_checks`).
+- Every tool validates input identifiers using strict ASCII regexes, delegates queries to the read-only database layer, and sanitizes untrusted free text inside `<untrusted>` XML tags.
+- `tests/test_boundaries.py` uses Python's Abstract Syntax Tree (`ast`) to inspect source code and enforce that `pipeline.py`, `agents.py`, `tasks.py`, and `tools.py` can never import `approvals` or `store.finalise_po`, and that tools contain zero file write or SQL modification calls.
+- A snapshot test verifies that each agent receives only its assigned read-only tools, with the Escalation Manager given zero tools.
+
+### 3-Sentence Interview Answer
+I implemented strictly typed, read-only CrewAI tools that validate arguments and sanitize untrusted database text before returning JSON outputs to agents. I enforced architectural boundaries using Abstract Syntax Tree (AST) unit tests to guarantee that agents and the pipeline cannot import purchase order finalization logic or execute write operations. This guarantees complete tool safety and enforces a separation of concerns verified on every CI run.
+
+
 
 
 
