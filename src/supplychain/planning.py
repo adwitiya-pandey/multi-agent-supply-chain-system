@@ -182,7 +182,7 @@ def filter_eligible_suppliers(suppliers: list[dict[str, Any]]) -> list[dict[str,
             continue
 
         item = dict(sup)
-        lt = item["lead_time_days"]
+        lt = int(item.get("lead_time_days", 7))
         if status == "DELAYED":
             item["effective_lead_time"] = lt + DELAY_PENALTY_DAYS
         else:
