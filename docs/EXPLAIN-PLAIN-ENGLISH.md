@@ -310,6 +310,33 @@ Think of a factory certifying a new automated manufacturing robot. First, engine
 ### 3-Sentence Interview Answer
 I executed the complete 10-scenario validation suite against live Gemini and deterministic simulation pipelines to benchmark token consumption, execution latency, and error resilience. The pipeline recorded structured per-agent execution traces locally to `docs/trace_summary.md`, proving end-to-end observability without requiring external LangSmith subscriptions. I generated an automated cost and token analysis report documenting measured notional expenses under our $0.50 per-cycle governance ceiling.
 
+---
+
+## Task T15: Comprehensive System Documentation & Architecture Specifications
+
+### Real-World Analogy
+Think of an FAA certification package for a commercial airliner. It is not enough that the plane flies in a flight simulator or passes a single test flight; the manufacturer must produce exhaustive, cross-referenced blueprints, an engineering decisions ledger explaining why specific redundant hydraulic circuits were chosen over fly-by-wire alone, a threat analysis proving containment of cabin depressurization or engine flameouts, and an unmistakable pilot flight manual with exact, repeatable pre-flight checklists that any certified crew member can execute flawlessly.
+
+### How the Code Works
+- **Master Documentation (`README.md`)**:
+  - Highlights project status, badges (CI, Python 3.13, CrewAI, Coverage 93%, MIT License).
+  - Embeds the master ASCII architecture flow from SPEC Section 4.
+  - Transparently contrasts what the implementation proves (deterministic safety, mathematical ownership, schema rigor, fail-closed boundaries) versus what offline mode does not prove (live LLM conversational nuances).
+  - Outlines exact, copy-paste quickstart commands verified in clean sandbox clones, along with live Gemini instructions, a 10-scenario reference matrix, measured token and cost reports, security architecture summaries, known limitations, and the full repository file tree.
+- **Architectural Specifications (`docs/architecture.md`)**:
+  - Details the five sequential CrewAI agent roles, read-only tools, and Pydantic message contracts.
+  - Documents the dual-rail safety architecture combining mathematical algorithms in `planning.py` and `checks.py` with LLM contextual reasoning.
+  - Formalizes the AST import prohibition isolating `approvals.py` outside agent boundaries.
+- **Threat Model (`docs/threat_model.md`)**:
+  - Classifies enterprise assets (working capital, inventory levels, database integrity, audit trail, token budget).
+  - Maps real-world attack vectors (indirect prompt injection, data poisoning, arithmetic hallucination, rogue supplier selection) directly to the 10 scenario tests (S01–S10).
+- **Architecture Decision Log (`docs/decisions.md`)**:
+  - Codifies decisions D1 through D10 per SPEC Section 21, documenting rejected alternatives, engineering rationales, and explicit "What would change my mind" criteria.
+
+### 3-Sentence Interview Answer
+I authored comprehensive, production-grade technical documentation including master architecture specifications, a rigorous threat model mapped across all 10 scenario edge cases, and an architectural decision log with explicit falsifiability criteria. The README provides exact, battle-tested quickstart instructions verified in a clean repository clone, transparently separating empirical findings from known operational boundaries. Every resume claim is substantiated by reproducible benchmarks, verified SDK facts, and immutable audit logs.
+
+
 
 
 
