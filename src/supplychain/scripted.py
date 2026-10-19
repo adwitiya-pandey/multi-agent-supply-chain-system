@@ -169,8 +169,9 @@ class ScriptedLLM(BaseLLM):
                 )
 
             # Second turn: calculate reorder plan
-            sales = [u for _, u in get_sales_window(sku_id, wh_id, 28)]
-            m_a = calculate_method_a(sales)
+            sales = [u for _, u in get_sales_window(sku_id, wh_id, 56)]
+            units_28 = sales[-28:] if len(sales) >= 28 else sales
+            m_a = calculate_method_a(units_28)
             inv = get_inventory(sku_id, wh_id)
             sups = get_supplier_options(sku_id)
             eligible = filter_eligible_suppliers(sups)
@@ -209,8 +210,9 @@ class ScriptedLLM(BaseLLM):
             # Second turn: build SupplierMessage
             sups = get_supplier_options(sku_id)
             eligible = filter_eligible_suppliers(sups)
-            sales = [u for _, u in get_sales_window(sku_id, wh_id, 28)]
-            m_a = calculate_method_a(sales)
+            sales = [u for _, u in get_sales_window(sku_id, wh_id, 56)]
+            units_28 = sales[-28:] if len(sales) >= 28 else sales
+            m_a = calculate_method_a(units_28)
             inv = get_inventory(sku_id, wh_id)
 
             if not eligible:

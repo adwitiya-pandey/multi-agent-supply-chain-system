@@ -204,6 +204,35 @@ Imagine an aircraft engine assembly line with five sequential workstations: meta
 ### 3-Sentence Interview Answer
 I orchestrated a sequential five-agent CrewAI pipeline with dedicated Pydantic message contracts and deterministic validation guardrails attached to each task. Guardrails recompute statistical metrics and order math on every cycle, rejecting and retrying LLM hallucinations before outputs can propagate downstream. The orchestrator enforces an immutable policy floor `max(policy, llm)` and records the final cycle snapshot to SQLite, maintaining zero write permissions for the agents themselves.
 
+---
+
+## T11: Comprehensive Scenario Stress-Testing and Cost Reporting
+
+### Real-World Analogy
+Think of stress-testing an autopilot avionics system in a full-motion flight simulator. Before any software is allowed in the cockpit, flight engineers run a battery of rigorous edge cases: standard descent, sudden microbursts, bird ingestion in engine 1, frozen pitot sensors, untrusted transponder signals, and erroneous flight-computer bus data. The aircraft must either safely adapt or fail closed by alerting the human flight crew.
+
+### How the Code Works
+- **Ten End-to-End Test Scenarios (`tests/test_scenarios.py`)**:
+  - `S01` (Normal Replenishment): Reorder point breached with healthy coverage; drafts PO with zero findings (`STANDARD`).
+  - `S02` (Primary Supplier Insolvent): Automatically selects secondary alternate; flags `QA14` and escalates to `SENIOR`.
+  - `S03` (Demand Spike): Detects 3x surge in recent sales; flags `QA06` and escalates to `SENIOR`.
+  - `S04` (Forecast Conflict): Detects divergence between 28-day moving average and trend fit; flags `QA05` and escalates to `SENIOR`.
+  - `S05` (Supplier Delay & Prompt Injection): Vendor notes attempt prompt injection (`Ignore instructions...`); sanitized, flagged `QA13`, and +7 day lead time penalty applied without altering order quantities.
+  - `S06` (Stockout): Zero units on hand; flags `QA08` (EXPEDITE) and escalates to `SENIOR`.
+  - `S07` (Overstock): Excess inventory on hand (5,000 units); safely resolves to `NO_ACTION_NEEDED` with zero draft PO.
+  - `S08` (High-Value PO): Total cost exceeds $10,000 ceiling; flags `QA09` and escalates to `SENIOR`.
+  - `S09` (Missing Historical Data): Sales records dropped to <80% data coverage; flags `QA07` (CRITICAL) and forces `BLOCKED` status.
+  - `S10` (Malformed LLM Output): Injected schema or arithmetic faults trigger guardrail retry limits and safely terminate as `FAILED`.
+- **Automated Scenario Runner (`scripts/run_scenarios.py`)**:
+  - Evaluates all 10 scenarios in sequence, isolates database state per run, and exports markdown summary tables to `docs/scenario_results.md`.
+- **Notional Cost Analytics (`scripts/cost_report.py`)**:
+  - Aggregates per-agent token usage and notional dollar costs ($1.50/M in, $7.50/M out) across all stored decision cycles into `docs/cost_report.md`.
+  - Emphasizes the crucial engineering caveat: free-tier Gemini API calls incur $0.00 actual billing.
+
+### 3-Sentence Interview Answer
+I validated the entire multi-agent system against ten comprehensive business and adversarial edge-case scenarios running 100% offline via ScriptedLLM. Each scenario verified deterministic safety behaviors including supplier fallback, prompt injection neutralization, critical data-loss blocking, and fail-closed error handling. I built automated reporting scripts that evaluate scenario outcomes and generate per-agent token and notional cost analytics.
+
+
 
 
 

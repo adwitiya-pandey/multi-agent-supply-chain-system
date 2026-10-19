@@ -148,6 +148,16 @@ def list_pending(db_path: str | Path | None = None) -> list[CycleResult]:
         conn.close()
 
 
+def list_all_cycles(db_path: str | Path | None = None) -> list[CycleResult]:
+    """List all stored cycle results."""
+    conn = init_app_db(db_path)
+    try:
+        rows = conn.execute("SELECT result_json FROM cycles ORDER BY created_at ASC").fetchall()
+        return [CycleResult.model_validate_json(r["result_json"]) for r in rows]
+    finally:
+        conn.close()
+
+
 def list_history(db_path: str | Path | None = None) -> list[dict[str, Any]]:
     """List decision history with approvals and purchase orders."""
     conn = init_app_db(db_path)

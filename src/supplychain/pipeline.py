@@ -49,6 +49,7 @@ from supplychain.planning import (
     round_to_supplier_pack,
 )
 from supplychain.policy import calculate_policy_level, compare_levels
+from supplychain.sanitize import is_injection_pattern
 from supplychain.store import save_cycle
 from supplychain.tasks import create_tasks
 
@@ -252,11 +253,15 @@ def run_cycle(
 
         # Execute deterministic QA consistency rules
         all_sups = get_supplier_options(request.sku_id)
+        is_note_flagged = any(is_injection_pattern(s.get("notes", "")) for s in all_sups) or (
+            "SIGNAL_UNTRUSTED" in forecast_msg.flags
+        )
         rule_findings = run_qa_checks(
             forecast=forecast_msg,
             plan=plan_msg,
             supplier=supplier_msg,
             supplier_options=all_sups,
+            untrusted_note_flagged=is_note_flagged,
             senior_threshold=settings.senior_po_threshold_usd,
             low_confidence_threshold=settings.low_confidence,
         )

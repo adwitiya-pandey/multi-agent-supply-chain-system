@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sqlite3
+from datetime import date, timedelta
 from pathlib import Path
 from typing import Any
 from urllib.parse import quote
@@ -80,19 +81,17 @@ def get_sales_window(
 ) -> list[tuple[str, int]]:
     """Retrieve (sale_date, units) for the last N days up to as_of_date."""
     as_of = get_as_of_date(db_path)
+    as_of_dt = date.fromisoformat(as_of)
+    cutoff = (as_of_dt - timedelta(days=days - 1)).isoformat()
     query = """
         SELECT sale_date, units
         FROM sales_daily
-        WHERE sku_id = ? AND warehouse_id = ? AND sale_date <= ?
-        ORDER BY sale_date DESC
-        LIMIT ?
+        WHERE sku_id = ? AND warehouse_id = ? AND sale_date >= ? AND sale_date <= ?
+        ORDER BY sale_date ASC
     """
     with get_ro_connection(db_path) as conn:
-        rows = conn.execute(query, (sku_id, warehouse_id, as_of, days)).fetchall()
-        # Return chronologically ascending (oldest to newest)
-        results = [(str(r["sale_date"]), int(r["units"])) for r in rows]
-        results.reverse()
-        return results
+        rows = conn.execute(query, (sku_id, warehouse_id, cutoff, as_of)).fetchall()
+        return [(str(r["sale_date"]), int(r["units"])) for r in rows]
 
 
 def get_inventory(
