@@ -153,6 +153,22 @@ Think of embassy diplomats who have access to read briefing binders and diplomat
 ### 3-Sentence Interview Answer
 I implemented strictly typed, read-only CrewAI tools that validate arguments and sanitize untrusted database text before returning JSON outputs to agents. I enforced architectural boundaries using Abstract Syntax Tree (AST) unit tests to guarantee that agents and the pipeline cannot import purchase order finalization logic or execute write operations. This guarantees complete tool safety and enforces a separation of concerns verified on every CI run.
 
+---
+
+## T9: Scripted LLM Engine, Model Factory, and Cost Guardrails
+
+### Real-World Analogy
+Imagine an automated trading desk that enforces a strict pre-trade credit limit. Every time an algorithm executes an order, an independent circuit breaker calculates the cumulative dollar exposure in real time. If the exposure crosses the risk limit by even a single penny, the circuit breaker instantly trips and aborts the session. `CostGuard` acts as this financial circuit breaker between agent task executions.
+
+### How the Code Works
+- `scripted.py` implements `ScriptedLLM` inheriting from CrewAI's `BaseLLM`. By setting `supports_function_calling() = False`, it forces CrewAI into standard ReAct text format (`Thought: ... / Action: ... / Action Input: ... / Final Answer: ...`), allowing real `@tool` functions to execute offline with zero API calls.
+- `llm.py` provides an LLM factory that dynamically returns `ScriptedLLM` (default offline mode) or `LLM(model="gemini/gemini-3.8-flash")` (live mode).
+- `cost.py` implements `calculate_cost()` using exact token prices ($1.50/M input, $7.50/M output) and `CostGuard`. Passed to `Crew(task_callback=...)`, `CostGuard` tallies cumulative tokens across all individual agent LLM instances after every task. If the total crosses the $0.50 budget, it immediately raises `BudgetExceeded`, terminating the cycle before subsequent tasks can run.
+
+### 3-Sentence Interview Answer
+I developed an offline scripted LLM subclassing CrewAI's BaseLLM to exercise full ReAct tool calling and Pydantic message parsing without external network dependencies. I implemented a CostGuard callback running between sequential tasks that tracks per-agent token usage and halts the pipeline with BudgetExceeded if costs cross $0.50. This guarantees reproducible, zero-cost unit testing in CI while providing automated financial safety during live Gemini runs.
+
+
 
 
 
