@@ -15,6 +15,7 @@ from scripts.build_db import build_database
 from supplychain.config import get_settings
 from supplychain.models import CycleRequest
 from supplychain.pipeline import run_cycle
+from supplychain.tracing import generate_trace_summary
 
 
 def run_all(
@@ -162,6 +163,15 @@ def run_all(
         fp.write("\n".join(md_lines))
 
     print(f"\nScenario results written to: {out_file}")
+
+    # Generate structured local trace summaries
+    trace_file = Path("logs/langsmith_traces.jsonl")
+    if trace_file.exists():
+        generate_trace_summary(trace_path=trace_file, summary_path="docs/trace_summary.md")
+        traces_dir = Path("docs/traces")
+        traces_dir.mkdir(parents=True, exist_ok=True)
+        generate_trace_summary(trace_path=trace_file, summary_path=traces_dir / "summary.md")
+        print("Trace summaries compiled to docs/trace_summary.md and docs/traces/")
 
 
 def main() -> None:

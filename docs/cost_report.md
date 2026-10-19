@@ -1,9 +1,9 @@
 # Token Usage and Cost Analysis Report
 
-*Report Generated*: 2026-10-19 19:49:42Z  
-*Total Analyzed Cycles*: 40  
-*Aggregate Token Count*: 30,720 tokens (23,040 prompt, 7,680 completion)  
-*Total Notional Cost*: $0.092160 USD  
+*Report Generated*: 2026-10-19 20:12:21Z  
+*Total Analyzed Cycles*: 63  
+*Aggregate Token Count*: 40,800 tokens (30,600 prompt, 10,200 completion)  
+*Total Notional Cost*: $0.122400 USD  
 
 > [!IMPORTANT]
 > **Cost numbers are notional (tokens × configured price); free-tier calls bill zero.**  
@@ -13,11 +13,11 @@
 
 | Agent Role | Prompt Tokens | Completion Tokens | Total Tokens | Notional Cost (USD) | Share (%) |
 |---|---|---|---|---|---|
-| `Demand Forecaster` | 4,800 | 1,600 | 6,400 | $0.019200 | 20.8% |
-| `Escalation Manager` | 4,320 | 1,440 | 5,760 | $0.017280 | 18.8% |
-| `Inventory Planner` | 5,280 | 1,760 | 7,040 | $0.021120 | 22.9% |
-| `Quality Assurance` | 4,320 | 1,440 | 5,760 | $0.017280 | 18.8% |
-| `Supplier Liaison` | 4,320 | 1,440 | 5,760 | $0.017280 | 18.8% |
+| `Demand Forecaster` | 6,360 | 2,120 | 8,480 | $0.025440 | 20.8% |
+| `Escalation Manager` | 5,760 | 1,920 | 7,680 | $0.023040 | 18.8% |
+| `Inventory Planner` | 6,960 | 2,320 | 9,280 | $0.027840 | 22.7% |
+| `Quality Assurance` | 5,760 | 1,920 | 7,680 | $0.023040 | 18.8% |
+| `Supplier Liaison` | 5,760 | 1,920 | 7,680 | $0.023040 | 18.8% |
 
 ## Per-Cycle Execution Breakdown
 
@@ -63,6 +63,29 @@
 | `CYC-20261019-7851` | `S08` | `PENDING_APPROVAL` | 600 | 200 | 800 | $0.002400 |
 | `CYC-20261019-7909` | `S09` | `BLOCKED` | 600 | 200 | 800 | $0.002400 |
 | `CYC-20261019-8655` | `S10` | `FAILED` | 360 | 120 | 480 | $0.001440 |
+| `CYC-20261019-9705` | `S01` | `PENDING_APPROVAL` | 600 | 200 | 800 | $0.002400 |
+| `CYC-20261019-6500` | `S01` | `FAILED` | 0 | 0 | 0 | $0.000000 |
+| `CYC-20261019-8714` | `S02` | `FAILED` | 0 | 0 | 0 | $0.000000 |
+| `CYC-20261019-3533` | `S03` | `FAILED` | 0 | 0 | 0 | $0.000000 |
+| `CYC-20261019-5848` | `S04` | `FAILED` | 0 | 0 | 0 | $0.000000 |
+| `CYC-20261019-7238` | `S05` | `FAILED` | 0 | 0 | 0 | $0.000000 |
+| `CYC-20261019-5553` | `S06` | `FAILED` | 0 | 0 | 0 | $0.000000 |
+| `CYC-20261019-1652` | `S07` | `FAILED` | 0 | 0 | 0 | $0.000000 |
+| `CYC-20261019-1852` | `S08` | `FAILED` | 0 | 0 | 0 | $0.000000 |
+| `CYC-20261019-4347` | `S09` | `FAILED` | 0 | 0 | 0 | $0.000000 |
+| `CYC-20261019-3148` | `S10` | `FAILED` | 0 | 0 | 0 | $0.000000 |
+| `CYC-20261019-5185` | `S01` | `PENDING_APPROVAL` | 600 | 200 | 800 | $0.002400 |
+| `CYC-20261019-3402` | `S02` | `PENDING_APPROVAL` | 600 | 200 | 800 | $0.002400 |
+| `CYC-20261019-8534` | `S01` | `PENDING_APPROVAL` | 600 | 200 | 800 | $0.002400 |
+| `CYC-20261019-5808` | `S02` | `PENDING_APPROVAL` | 600 | 200 | 800 | $0.002400 |
+| `CYC-20261019-8477` | `S03` | `PENDING_APPROVAL` | 600 | 200 | 800 | $0.002400 |
+| `CYC-20261019-7760` | `S04` | `PENDING_APPROVAL` | 600 | 200 | 800 | $0.002400 |
+| `CYC-20261019-8112` | `S05` | `PENDING_APPROVAL` | 600 | 200 | 800 | $0.002400 |
+| `CYC-20261019-5412` | `S06` | `PENDING_APPROVAL` | 600 | 200 | 800 | $0.002400 |
+| `CYC-20261019-8960` | `S07` | `NO_ACTION_NEEDED` | 600 | 200 | 800 | $0.002400 |
+| `CYC-20261019-7542` | `S08` | `PENDING_APPROVAL` | 600 | 200 | 800 | $0.002400 |
+| `CYC-20261019-8352` | `S09` | `BLOCKED` | 600 | 200 | 800 | $0.002400 |
+| `CYC-20261019-3777` | `S10` | `FAILED` | 360 | 120 | 480 | $0.001440 |
 
 ## Budget Enforcement Verification
 - Every cycle was monitored by the `CostGuard` callback.

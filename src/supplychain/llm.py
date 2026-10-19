@@ -26,11 +26,11 @@ def get_llm(
     settings = get_settings()
     selected_mode = mode or settings.llm_mode
 
-    if selected_mode == "gemini":
-        key = settings.gemini_api_key.get_secret_value() or "dummy"
+    if selected_mode in ("gemini", "live"):
+        key = settings.gemini_api_key.get_secret_value() if settings.gemini_api_key else ""
         return LLM(
             model=f"gemini/{settings.gemini_model}",
-            api_key=key,
+            api_key=key or "dummy",
             max_rpm=settings.gemini_max_rpm,
         )
 
