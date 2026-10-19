@@ -261,6 +261,34 @@ Imagine a defense command console where automated targeting computers track rada
 ### 3-Sentence Interview Answer
 I implemented an interactive Streamlit human-in-the-loop dashboard providing clear visibility into multi-agent forecasts, inventory reorder plans, draft POs, and QA consistency findings. The approval gate enforces deterministic safety policies by programmatically disabling the Approve button whenever a cycle is BLOCKED and sanitizing all user-submitted notes. I authored headless UI test suites with Streamlit's AppTest to verify that human approval actions correctly finalize immutable purchase order records.
 
+---
+
+## Task T13: Tracing Hook & CI Hardening
+
+### Real-World Analogy
+Think of an air traffic control radar and flight data recorder. When planes operate in controlled international airspace with radar coverage, their telemetry transponders stream live altitude, bearing, and speed coordinates directly to regional air traffic centers. However, when flying across oceanic or remote radar-dark sectors, the aircraft's onboard flight recorder independently records every pilot action, engine temperature, and control surface deflection to a secure local black box, ensuring full accountability and auditability without dropping any packets or failing unexpectedly.
+
+### How the Code Works
+- **LangSmith OpenTelemetry Hook (`src/supplychain/tracing.py`)**:
+  - Implements `enable_langsmith()` per the official LangSmith CrewAI OpenTelemetry specifications using `langsmith.integrations.otel.OtelSpanProcessor` and `opentelemetry.instrumentation.crewai.CrewAIInstrumentor`.
+  - Enforces zero network calls when disabled: if `LANGSMITH_TRACING=false` or `LANGSMITH_API_KEY` is not supplied, the function immediately returns `False` without setting up external processors or altering network state.
+  - Dynamically configures `TracerProvider`, unsets `OTEL_SDK_DISABLED`, registers `OtelSpanProcessor`, and instruments CrewAI when enabled.
+- **Local Structured Fallback Traces**:
+  - Provides `record_local_trace()` to append structured JSON entries to `logs/langsmith_traces.jsonl` containing cycle ID, agent name, task name, token metrics, latency, and status.
+  - Provides `generate_trace_summary()` to compile recorded spans into an executive markdown document (`docs/trace_summary.md`), proving autonomous trace observability even when LangSmith API keys are absent.
+- **CI Hardening (`.github/workflows/ci.yml`)**:
+  - Adds `uv lock --check` to verify deterministic dependency resolution.
+  - Enforces strict coverage threshold `pytest --cov=src/supplychain --cov-fail-under=85`.
+  - Runs dedicated integration suites for scenarios (`tests/test_scenarios.py`) and architectural boundaries (`tests/test_boundaries.py`).
+- **Comprehensive Unit Testing (`tests/test_tracing.py`)**:
+  - Tests no-op behavior when disabled or missing credentials.
+  - Tests OpenTelemetry instrumentation initialization with mock processors.
+  - Tests local trace recording and markdown summary generation.
+
+### 3-Sentence Interview Answer
+I implemented production-grade OpenTelemetry tracing integration for CrewAI via LangSmith, strictly gated by configuration so that offline runs and test suites execute with zero external network overhead. When external credentials are not configured, the pipeline logs structured per-agent execution spans locally to generate full trace summaries and execution evidence. I hardened the GitHub Actions CI pipeline with lockfile checks, architectural boundary tests, and an 85% code coverage gate.
+
+
 
 
 
