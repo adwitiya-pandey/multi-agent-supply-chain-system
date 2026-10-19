@@ -1,0 +1,25 @@
+{
+  "id": "S09",
+  "title": "Missing data",
+  "request": {
+    "scenario_id": "S09",
+    "sku_id": "SKU0009",
+    "warehouse_id": "WH-N"
+  },
+  "patches": [
+    {
+      "type": "remove_sales_rows",
+      "sku_id": "SKU0009",
+      "warehouse_id": "WH-N",
+      "fraction": 0.6
+    }
+  ],
+  "expected": {
+    "status": "BLOCKED",
+    "final_level": "BLOCKED",
+    "must_have_findings": [
+      "QA07"
+    ],
+    "po_expected": true
+  }
+}

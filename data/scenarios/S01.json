@@ -1,0 +1,16 @@
+{
+  "id": "S01",
+  "title": "Normal replenishment",
+  "request": {
+    "scenario_id": "S01",
+    "sku_id": "SKU0001",
+    "warehouse_id": "WH-N"
+  },
+  "patches": [],
+  "expected": {
+    "status": "PENDING_APPROVAL",
+    "final_level": "STANDARD",
+    "must_have_findings": [],
+    "po_expected": true
+  }
+}

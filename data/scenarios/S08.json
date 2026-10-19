@@ -1,0 +1,28 @@
+{
+  "id": "S08",
+  "title": "High-value PO",
+  "request": {
+    "scenario_id": "S08",
+    "sku_id": "SKU0008",
+    "warehouse_id": "WH-N"
+  },
+  "patches": [
+    {
+      "table": "sku_suppliers",
+      "set": {
+        "unit_cost": 500.0
+      },
+      "where": {
+        "sku_id": "SKU0008"
+      }
+    }
+  ],
+  "expected": {
+    "status": "PENDING_APPROVAL",
+    "final_level": "SENIOR",
+    "must_have_findings": [
+      "QA09"
+    ],
+    "po_expected": true
+  }
+}

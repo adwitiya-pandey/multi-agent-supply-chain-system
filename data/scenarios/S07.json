@@ -1,0 +1,27 @@
+{
+  "id": "S07",
+  "title": "Overstock",
+  "request": {
+    "scenario_id": "S07",
+    "sku_id": "SKU0007",
+    "warehouse_id": "WH-N"
+  },
+  "patches": [
+    {
+      "table": "inventory",
+      "set": {
+        "on_hand": 5000
+      },
+      "where": {
+        "sku_id": "SKU0007",
+        "warehouse_id": "WH-N"
+      }
+    }
+  ],
+  "expected": {
+    "status": "NO_ACTION_NEEDED",
+    "final_level": "STANDARD",
+    "must_have_findings": [],
+    "po_expected": false
+  }
+}

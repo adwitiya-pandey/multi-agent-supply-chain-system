@@ -1,0 +1,24 @@
+{
+  "id": "S04",
+  "title": "Conflicting forecasts",
+  "request": {
+    "scenario_id": "S04",
+    "sku_id": "SKU0004",
+    "warehouse_id": "WH-N"
+  },
+  "patches": [
+    {
+      "type": "conflict_trend",
+      "sku_id": "SKU0004",
+      "warehouse_id": "WH-N"
+    }
+  ],
+  "expected": {
+    "status": "PENDING_APPROVAL",
+    "final_level": "SENIOR",
+    "must_have_findings": [
+      "QA05"
+    ],
+    "po_expected": true
+  }
+}

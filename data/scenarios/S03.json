@@ -1,0 +1,26 @@
+{
+  "id": "S03",
+  "title": "Demand spike",
+  "request": {
+    "scenario_id": "S03",
+    "sku_id": "SKU0003",
+    "warehouse_id": "WH-N"
+  },
+  "patches": [
+    {
+      "type": "demand_spike",
+      "sku_id": "SKU0003",
+      "warehouse_id": "WH-N",
+      "multiplier": 3.0,
+      "days": 7
+    }
+  ],
+  "expected": {
+    "status": "PENDING_APPROVAL",
+    "final_level": "SENIOR",
+    "must_have_findings": [
+      "QA06"
+    ],
+    "po_expected": true
+  }
+}
