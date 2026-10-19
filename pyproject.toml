@@ -1,0 +1,38 @@
+[project]
+name = "supplychain"
+version = "0.1.0"
+description = "Five-agent CrewAI supply-chain decision system"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.13,<3.14"
+dependencies = [
+    "crewai[google-genai]==1.15.28",
+    "pydantic-settings==2.16.0",
+    "structlog==26.1.0",
+    "streamlit==1.66.0",
+]
+
+[project.optional-dependencies]
+tracing = [
+    "langsmith==0.14.11",
+    "opentelemetry-instrumentation-crewai==0.62.4",
+]
+
+[dependency-groups]
+dev = [
+    "pytest==9.1.1",
+    "pytest-cov==7.1.0",
+    "ruff==0.17.1",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+target-version = "py313"
+line-length = 100
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
