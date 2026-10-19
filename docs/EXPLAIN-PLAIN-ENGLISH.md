@@ -232,6 +232,36 @@ Think of stress-testing an autopilot avionics system in a full-motion flight sim
 ### 3-Sentence Interview Answer
 I validated the entire multi-agent system against ten comprehensive business and adversarial edge-case scenarios running 100% offline via ScriptedLLM. Each scenario verified deterministic safety behaviors including supplier fallback, prompt injection neutralization, critical data-loss blocking, and fail-closed error handling. I built automated reporting scripts that evaluate scenario outcomes and generate per-agent token and notional cost analytics.
 
+---
+
+## T12: Streamlit Human-in-the-Loop Dashboard and Governance UI
+
+### Real-World Analogy
+Imagine a defense command console where automated targeting computers track radar contacts, compute flight trajectories, and draft mission proposals. However, the physical firing solenoid requires an authorized officer to turn a physical brass key. If the guidance system detects a targeting conflict or unverified radar track, an electrical interlock cuts current to the firing solenoid entirely, rendering the key mechanism physically inoperable.
+
+### How the Code Works
+- **Streamlit Interactive UI (`src/supplychain/app.py`)**:
+  - **Sidebar Mode Indicator**: Displays a clear warning banner (`SCRIPTED DEMO: outputs are deterministic, not Gemini`) when running offline or an informational banner when in live Gemini mode.
+  - **Reviewer Profile Controls**: Validates human reviewer names against regex patterns (`^[A-Za-z][A-Za-z .'-]{1,39}$`) and captures decision rationale notes.
+  - **Detailed Proposal Inspector**:
+    - **Demand Forecast**: Renders baseline demand, Method A/B divergence, coverage percentage, and detected trend flags.
+    - **Inventory Plan**: Renders on-hand stock, safety stock, reorder point, and reorder urgency.
+    - **Draft Purchase Order & Email**: Renders vendor selection, pack rounding, unit cost, and plain-text email body (never parsed as raw HTML).
+    - **QA Findings**: Lists automated rule findings (INFO, WARN, CRITICAL).
+    - **Token & Notional Cost**: Displays per-agent token breakdown and cumulative dollar costs.
+  - **Human Decision Gate**:
+    - The **Approve Purchase Order** button is deterministically disabled whenever `final_level == "BLOCKED"`.
+    - Clicking approve invokes `approvals.decide()`, copying PO fields exclusively from stored cycle data and inserting one record into `purchase_orders`.
+    - Reviewer notes are automatically wrapped in `<untrusted>` tags and sanitized against prompt injections.
+  - **Decision Audit Trail**: Tabular history displaying previous human decisions, timestamps, and finalized purchase order values.
+- **Headless Dashboard Unit Tests (`tests/test_app.py`)**:
+  - Leverages `streamlit.testing.v1.AppTest` to run headless UI tests without opening a browser.
+  - Confirms banner rendering, proposal inspection, PO creation on approval, disabled approve state for BLOCKED cycles, and sanitization of malicious reviewer notes.
+
+### 3-Sentence Interview Answer
+I implemented an interactive Streamlit human-in-the-loop dashboard providing clear visibility into multi-agent forecasts, inventory reorder plans, draft POs, and QA consistency findings. The approval gate enforces deterministic safety policies by programmatically disabling the Approve button whenever a cycle is BLOCKED and sanitizing all user-submitted notes. I authored headless UI test suites with Streamlit's AppTest to verify that human approval actions correctly finalize immutable purchase order records.
+
+
 
 
 
