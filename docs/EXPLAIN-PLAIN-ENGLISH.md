@@ -111,6 +111,33 @@ If the LLM acting as the Quality Assurance agent had the authority to delete or 
 ### 3-Sentence Interview Answer
 I built a deterministic QA rules engine covering 14 operational checks and an untrusted input sanitization pipeline. The pipeline isolates hostile text inside untrusted XML tags and scans for prompt injection patterns without preventing data flow. Most importantly, the merge architecture guarantees that LLM agents can add qualitative findings but can never suppress or override deterministic rule findings.
 
+---
+
+## T6 & T7: Deterministic Escalation Policy, Append-Only Storage, and the Human Approval Gate
+
+### Real-World Analogy
+Think of a dual-key nuclear launch authorization protocol or commercial loan underwriting. An algorithm can evaluate credit scores and assemble a loan package, but only an authorized senior loan officer with proper credentials can physically sign and disburse funds. Even if an AI agent recommends funding a loan, it holds no pen, no checkbook, and zero access to the bank's wire transfer system.
+
+### How the Code Works
+1. **The Policy Floor (`policy.py`)**:
+   - `calculate_policy_level()` establishes a deterministic safety floor based on hard facts: any critical QA finding, missing suppliers, or failed cycles lock the level to `BLOCKED`. High-dollar purchase orders ($\ge \$10,000$), expedite urgency, or low confidence force a `SENIOR` tier.
+   - `compare_levels(policy, llm)` enforces: `final_level = max(policy, llm)` under `STANDARD < SENIOR < BLOCKED`. The LLM can raise caution (e.g. from STANDARD to SENIOR), but it can **never** lower caution below the deterministic policy floor.
+2. **The External Approval Gate (`approvals.py`)**:
+   - The CrewAI agent pipeline is strictly read-only and terminates with a draft result saved in `app.db`.
+   - `decide()` in `approvals.py` is the only function that can finalize a purchase order. It enforces that:
+     - The cycle is currently in `PENDING_APPROVAL`.
+     - A `BLOCKED` cycle cannot be approved (only rejected).
+     - The reviewer name matches strict name patterns (preventing dummy or automated names).
+     - Decisions are strictly single-use (duplicate decisions raise `ApprovalError`).
+     - On approval, `finalise_po()` copies the PO fields **directly from the stored `CycleResult`**, completely ignoring any user-tampered request parameters.
+     - Both the approval decision and the PO creation emit immutable audit records.
+3. **Append-Only Integrity (`store.py`)**:
+   - SQLite triggers (`BEFORE UPDATE` and `BEFORE DELETE`) raise `ABORT` on `cycles`, `approvals`, and `purchase_orders`, providing cryptographic-like immutability against retroactive tampering.
+
+### 3-Sentence Interview Answer
+I designed an external human-in-the-loop approval gate where deterministic code owns the escalation floor and agents can only escalate caution, never de-escalate. Only an explicit human decision can finalize a purchase order, with fields copied strictly from stored cycle snapshots rather than user request payloads. Append-only SQLite triggers on all decision tables prevent retroactive modification and guarantee tamper-evident auditability.
+
+
 
 
 
