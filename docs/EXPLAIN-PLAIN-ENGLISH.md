@@ -288,6 +288,29 @@ Think of an air traffic control radar and flight data recorder. When planes oper
 ### 3-Sentence Interview Answer
 I implemented production-grade OpenTelemetry tracing integration for CrewAI via LangSmith, strictly gated by configuration so that offline runs and test suites execute with zero external network overhead. When external credentials are not configured, the pipeline logs structured per-agent execution spans locally to generate full trace summaries and execution evidence. I hardened the GitHub Actions CI pipeline with lockfile checks, architectural boundary tests, and an 85% code coverage gate.
 
+---
+
+## Task T14: Live Gemini Scenario Run, Local Trace Capture & Measured Cost Report
+
+### Real-World Analogy
+Think of a factory certifying a new automated manufacturing robot. First, engineers run comprehensive digital twins and computer simulations under virtual physics to prove safety boundaries and deterministic fault reactions. Next, they take the robot onto the live shop floor, connect live power and telemetry, monitor real-world electrical draw and component wear down to the milliwatt, and record immutable instrumentation logs to certify production readiness against real-world external constraints.
+
+### How the Code Works
+- **Live Gemini Integration (`src/supplychain/llm.py` & `scripts/run_scenarios.py`)**:
+  - Automatically loads `GEMINI_API_KEY` from the project's local gitignored `.env` file via `pydantic-settings`.
+  - Configures native `gemini/gemini-3.8-flash` LLM provider instances across agents, honoring rate limits with a 3-second pacing delay.
+  - Transparently catches live API rate-limit and quota exhaustion errors (`google.genai.errors.APIError`), triggering fail-closed safety semantics (`status = FAILED`, `policy_level = BLOCKED`) without uncaught crashes.
+- **Local Trace Capture & Evidence Generation (`docs/trace_summary.md` & `docs/traces/summary.md`)**:
+  - Structured execution spans are recorded locally to `logs/langsmith_traces.jsonl` and exported to `docs/trace_summary.md` and `docs/traces/summary.md`.
+  - Proves per-agent observability (Demand Forecaster, Inventory Planner, Supplier Liaison, QA, Escalation Manager) including exact prompt tokens, completion tokens, latency, and status per cycle.
+- **Measured Cost Analysis (`scripts/cost_report.py` -> `docs/cost_report.md`)**:
+  - Scans all finalized cycles from `data/app.db` and compiles aggregated token consumption and notional dollar costs based on SPEC retail price tables ($1.50/M input, $7.50/M output).
+  - Explicitly documents notional cost caveats: free-tier calls bill $0.00 while theoretical commercial pricing scales linearly with measured tokens.
+
+### 3-Sentence Interview Answer
+I executed the complete 10-scenario validation suite against live Gemini and deterministic simulation pipelines to benchmark token consumption, execution latency, and error resilience. The pipeline recorded structured per-agent execution traces locally to `docs/trace_summary.md`, proving end-to-end observability without requiring external LangSmith subscriptions. I generated an automated cost and token analysis report documenting measured notional expenses under our $0.50 per-cycle governance ceiling.
+
+
 
 
 

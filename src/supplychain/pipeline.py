@@ -15,6 +15,7 @@ from typing import Any
 
 import structlog
 from crewai import Crew, Process
+from google.genai.errors import APIError
 from pydantic import ValidationError
 
 from supplychain.agents import create_agents
@@ -50,7 +51,7 @@ from supplychain.planning import (
 )
 from supplychain.policy import calculate_policy_level, compare_levels
 from supplychain.sanitize import is_injection_pattern
-from supplychain.store import save_cycle
+from supplychain.store import get_cycle, save_cycle
 from supplychain.tasks import create_tasks
 from supplychain.tracing import enable_langsmith, record_local_trace
 
@@ -59,8 +60,15 @@ logger = get_logger("pipeline")
 
 def _generate_cycle_id() -> str:
     today_str = datetime.now(UTC).strftime("%Y%m%d")
-    rnd = random.randint(1000, 9999)
-    return f"CYC-{today_str}-{rnd}"
+    for _ in range(100):
+        rnd = random.randint(1000, 9999)
+        cid = f"CYC-{today_str}-{rnd:04d}"
+        try:
+            if not get_cycle(cid):
+                return cid
+        except (sqlite3.Error, RuntimeError):
+            return cid
+    return f"CYC-{today_str}-{random.randint(1000, 9999):04d}"
 
 
 def _precompute_facts(sku_id: str, warehouse_id: str) -> dict[str, Any]:
@@ -326,6 +334,8 @@ def run_cycle(
         KeyError,
         RuntimeError,
         sqlite3.Error,
+        OSError,
+        APIError,
     ) as exc:
         logger.error("cycle_failed", error=str(exc))
         status = "FAILED"
@@ -335,15 +345,16 @@ def run_cycle(
 
     cost_report = cost_guard.get_report()
 
-    for agent_role in agents:
-        p_toks = cost_report.prompt_tokens.get(agent_role, 0)
-        cmp_toks = cost_report.completion_tokens.get(agent_role, 0)
+    for agent_inst in agents.values():
+        role = agent_inst.role
+        p_toks = cost_report.prompt_tokens.get(role, 0)
+        cmp_toks = cost_report.completion_tokens.get(role, 0)
         tot_toks = p_toks + cmp_toks
-        c_val = cost_report.usd.get(agent_role, 0.0)
+        c_val = cost_report.usd.get(role, 0.0)
         record_local_trace(
             cycle_id=cycle_id,
-            agent_name=agent_role,
-            task_name=f"{agent_role.lower().replace(' ', '_')}_task",
+            agent_name=role,
+            task_name=f"{role.lower().replace(' ', '_')}_task",
             latency_s=0.0,
             prompt_tokens=p_toks,
             completion_tokens=cmp_toks,

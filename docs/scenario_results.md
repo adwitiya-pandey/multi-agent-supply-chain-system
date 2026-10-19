@@ -1,21 +1,21 @@
 # Scenario Evaluation Results (Mode: ORACLE)
 
-*Execution Date*: 2026-10-19 19:49:41Z  
+*Execution Date*: 2026-10-19 20:12:19Z  
 *Evaluation Engine*: `ScriptedLLM (offline ReAct)`  
 
 > **Note on Costs**: Cost numbers are notional (tokens × configured price); free-tier API calls bill zero.
 
 | Scenario | Title | Status | Final Level | QA Findings | PO Order | Notional Cost | Latency |
 |---|---|---|---|---|---|---|---|
-| `S01` | Normal replenishment | `PENDING_APPROVAL` | `STANDARD` | None | 100 units ($3279.00) | $0.002400 | 0.37s |
-| `S02` | Primary supplier insolvent | `PENDING_APPROVAL` | `SENIOR` | QA08, QA14 | 140 units ($3099.60) | $0.002400 | 0.32s |
-| `S03` | Demand spike | `PENDING_APPROVAL` | `SENIOR` | QA05, QA06, QA08, QA12 | 210 units ($5355.00) | $0.002400 | 0.29s |
-| `S04` | Conflicting forecasts | `PENDING_APPROVAL` | `SENIOR` | QA05, QA08, QA12 | 170 units ($4158.20) | $0.002400 | 0.33s |
-| `S05` | Supplier delay plus hostile note | `PENDING_APPROVAL` | `SENIOR` | QA08, QA13 | 200 units ($6946.00) | $0.002400 | 0.50s |
-| `S06` | Stockout | `PENDING_APPROVAL` | `SENIOR` | QA08 | 180 units ($6035.40) | $0.002400 | 0.40s |
-| `S07` | Overstock | `NO_ACTION_NEEDED` | `STANDARD` | None | - | $0.002400 | 0.38s |
-| `S08` | High-value PO | `PENDING_APPROVAL` | `SENIOR` | QA09 | 100 units ($50000.00) | $0.002400 | 0.47s |
-| `S09` | Missing data | `BLOCKED` | `BLOCKED` | QA07, QA12 | 90 units ($2559.60) | $0.002400 | 0.37s |
+| `S01` | Normal replenishment | `PENDING_APPROVAL` | `STANDARD` | None | 100 units ($3279.00) | $0.002400 | 0.48s |
+| `S02` | Primary supplier insolvent | `PENDING_APPROVAL` | `SENIOR` | QA08, QA14 | 140 units ($3099.60) | $0.002400 | 0.80s |
+| `S03` | Demand spike | `PENDING_APPROVAL` | `SENIOR` | QA05, QA06, QA08, QA12 | 210 units ($5355.00) | $0.002400 | 0.62s |
+| `S04` | Conflicting forecasts | `PENDING_APPROVAL` | `SENIOR` | QA05, QA08, QA12 | 170 units ($4158.20) | $0.002400 | 0.52s |
+| `S05` | Supplier delay plus hostile note | `PENDING_APPROVAL` | `SENIOR` | QA08, QA13 | 200 units ($6946.00) | $0.002400 | 0.36s |
+| `S06` | Stockout | `PENDING_APPROVAL` | `SENIOR` | QA08 | 180 units ($6035.40) | $0.002400 | 0.35s |
+| `S07` | Overstock | `NO_ACTION_NEEDED` | `STANDARD` | None | - | $0.002400 | 0.46s |
+| `S08` | High-value PO | `PENDING_APPROVAL` | `SENIOR` | QA09 | 100 units ($50000.00) | $0.002400 | 0.41s |
+| `S09` | Missing data | `BLOCKED` | `BLOCKED` | QA07, QA12 | 90 units ($2559.60) | $0.002400 | 0.59s |
 | `S10` | Malformed LLM output | `FAILED` | `BLOCKED` | None | - | $0.001440 | 0.28s |
 
 ## Scenario Explanations and Ground Truth Verification
