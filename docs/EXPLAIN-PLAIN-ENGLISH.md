@@ -168,6 +168,43 @@ Imagine an automated trading desk that enforces a strict pre-trade credit limit.
 ### 3-Sentence Interview Answer
 I developed an offline scripted LLM subclassing CrewAI's BaseLLM to exercise full ReAct tool calling and Pydantic message parsing without external network dependencies. I implemented a CostGuard callback running between sequential tasks that tracks per-agent token usage and halts the pipeline with BudgetExceeded if costs cross $0.50. This guarantees reproducible, zero-cost unit testing in CI while providing automated financial safety during live Gemini runs.
 
+---
+
+## T10: Sequential Five-Agent Pipeline and Deterministic Guardrails
+
+### Real-World Analogy
+Imagine an aircraft engine assembly line with five sequential workstations: metallurgy inspection, component fabrication, procurement integration, safety audit, and flight certification. At each station, even though senior technicians inspect and comment on parts, automated laser micrometers and calibrated scales inspect every single piece against CAD blueprints. If a technician writes down a measurement that differs from the laser reading, the automated conveyor halts and refuses to pass the part to the next station.
+
+### How the Code Works
+- **Five Specialized Agents (`agents.py`)**:
+  - `forecaster`: Analyzes sales patterns and market signals; assigned `get_demand_stats` and `get_market_signals`.
+  - `planner`: Determines inventory reorder points and order targets; assigned `get_inventory_position` and `calculate_reorder_plan`.
+  - `supplier`: Evaluates vendor reliability, packaging, and drafts POs; assigned `get_supplier_options`.
+  - `qa`: Audits cross-message consistency and terms; assigned `run_consistency_checks`.
+  - `escalation`: Recommends approval escalation tiers; zero tools.
+  - Each agent gets its own distinct `LLM` instance to isolate token accounting.
+
+- **Deterministic Guardrails (`guardrails.py`)**:
+  Each task enforces a custom callback following CrewAI's `(True, output)` or `(False, "error message")` contract:
+  | Task | Output Model | Fields Guarded Deterministically |
+  |---|---|---|
+  | Demand Forecast | `ForecastMessage` | `daily_demand_mean` within $[0.5 \min(A,B), 2.0 \max(A,B)]$, exact parity on `method_a_daily`, `method_b_daily`, `data_coverage`, and mandatory presence of `CONFLICT`, `SPIKE`, `LOW_COVERAGE` flags. |
+  | Inventory Plan | `InventoryPlanMessage` | `daily_demand` parity with forecast mean, exact match on `safety_stock`, `reorder_point`, `target_level`, and `needed_qty`. |
+  | Supplier Liaison | `SupplierMessage` | Valid supplier eligibility, exact rounded pack quantity, catalog unit cost, total arithmetic ($qty \times cost$), minimum lead time delivery date, no external URLs, and no phantom quoted prices in draft email. |
+  | Quality Assurance | `QAReport` | Mandatory inclusion of all deterministic rule findings (QA01–QA14), `FAIL` verdict if CRITICAL findings exist, and non-`PASS` if WARN findings exist. |
+  | Escalation | `EscalationDecision` | Escalation tier validity (`STANDARD`, `SENIOR`, `BLOCKED`). |
+
+- **Sequential Pipeline Orchestrator (`pipeline.py`)**:
+  - `run_cycle()` generates unique cycle IDs, initializes structlog contextvars, precomputes ground truth facts from `supply.db`, and initiates sequential execution with `CostGuard` and `tracing=False`.
+  - Task outputs are extracted and validated against Pydantic schemas.
+  - Independent rule checks run via `run_qa_checks()` and are merged with LLM findings to guarantee zero dropped violations.
+  - The final escalation tier enforces `max(policy_level, llm_level)` so LLMs can only raise caution.
+  - The cycle snapshot is saved to `app.db` with status `PENDING_APPROVAL`, `NO_ACTION_NEEDED`, `BLOCKED`, or `FAILED`.
+
+### 3-Sentence Interview Answer
+I orchestrated a sequential five-agent CrewAI pipeline with dedicated Pydantic message contracts and deterministic validation guardrails attached to each task. Guardrails recompute statistical metrics and order math on every cycle, rejecting and retrying LLM hallucinations before outputs can propagate downstream. The orchestrator enforces an immutable policy floor `max(policy, llm)` and records the final cycle snapshot to SQLite, maintaining zero write permissions for the agents themselves.
+
+
 
 
 

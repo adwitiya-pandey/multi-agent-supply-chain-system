@@ -148,11 +148,11 @@ def populate_base_data(conn: sqlite3.Connection, as_of: date, seed: int = 42) ->
     conn.executemany("INSERT INTO sales_daily VALUES (?, ?, ?, ?)", sales_rows)
 
     # 7. Inventory
-    # Default: on_hand around 80 (below target, near or below ROP for ordering), on_order = 0
+    # Default: on_hand around 90 (below ROP 104 for ordering, above LT * demand for NORMAL urgency), on_order = 0
     inventory_rows = []
     for sku_id, _, _ in SKUS:
         for wh_id, _ in WAREHOUSES:
-            inventory_rows.append((sku_id, wh_id, 80, 0))
+            inventory_rows.append((sku_id, wh_id, 90, 0))
     conn.executemany("INSERT INTO inventory VALUES (?, ?, ?, ?)", inventory_rows)
 
     # 8. Market Signals
