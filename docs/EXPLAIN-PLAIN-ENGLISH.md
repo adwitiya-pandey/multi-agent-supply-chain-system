@@ -71,5 +71,29 @@ Imagine a bank branch allowing researchers to inspect historical ledger transact
 ### 3-Sentence Interview Answer
 I built a reproducible synthetic supply chain database with 10 simulated operational scenarios using SQLite and deterministic random seeding. I enforced a 3-layer read-only security architecture combining URI `mode=ro`, SQLite's `query_only` pragma, and an engine-level authorizer callback. Rather than exposing arbitrary SQL tools to LLMs, I exposed strictly typed Python query functions to permanently eliminate SQL injection and unauthorized data mutation.
 
+---
+
+## T4: Deterministic Planning Mathematics and Inventory Modeling
+
+### Real-World Analogy
+Imagine packing an emergency reserve kit for a transatlantic sailing expedition. You face two compounding uncertainties: how much fresh water your crew consumes each day (demand variability) and how many extra days storm weather might delay your arrival at port (lead time variability). If either demand surges OR the ship is delayed, you run out of water. Safety stock with variable lead time mathematically accounts for both risks simultaneously.
+
+### Why Safety Stock Has Variable Lead Time and Why the LLM Does Not Compute It
+1. **The Formula**:
+   $$\text{SS} = \lceil z \cdot \sqrt{\text{LT} \cdot \sigma_d^2 + d^2 \cdot \sigma_{\text{LT}}^2} \rceil$$
+   The first term under the square root ($\text{LT} \cdot \sigma_d^2$) buffers against day-to-day demand fluctuations during an average delivery window. The second term ($d^2 \cdot \sigma_{\text{LT}}^2$) buffers against supplier transit delays when demand continues at the mean daily rate.
+2. **Why the LLM Does Not Compute It**:
+   Large Language Models are probabilistic token predictors, not calculators. Under token generation, arithmetic operations like square roots, non-linear inverse normal CDF conversions ($\text{inv\_cdf}(0.95) \approx 1.645$), and integer ceilings frequently hallucinate subtle discrepancies (e.g., claiming $\sqrt{128} \approx 12$ instead of $11.31$, or calculating $85$ units instead of $110$). In enterprise supply chain procurement, an error of 25 units or a misplaced decimal translates directly to stockouts or wasted working capital. Therefore, deterministic Python code owns 100% of the numbers, while agents only interpret, contextualize, and flag anomalies.
+
+### How the Code Works
+- `planning.py` implements pure functions using Python stdlib (`math.ceil`, `math.sqrt`, `statistics.NormalDist`).
+- It computes baseline demand via Method A (28-day moving average) and Method B (14-day future projection from a 56-day least-squares line fit floored at 0).
+- It calculates safety stock, reorder point (ROP), target replenishment levels, and rounds order quantities to supplier MOQ and pack size multiples.
+- It detects forecast conflicts ($>30\%$ divergence) and sudden demand spikes ($\ge 2\times$ baseline).
+
+### 3-Sentence Interview Answer
+I implemented deterministic inventory replenishment mathematics in pure Python using standard normal distributions and two forecasting baselines. The safety stock formula simultaneously buffers demand variance and supplier lead-time variance using exact statistical calculations. The LLM is strictly prohibited from calculating procurement numbers to eliminate hallucination risk, while deterministic guardrails verify every downstream decision against ground-truth arithmetic.
+
+
 
 
