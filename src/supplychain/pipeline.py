@@ -29,7 +29,7 @@ from supplychain.db import (
     get_sales_window,
     get_supplier_options,
 )
-from supplychain.logging_setup import get_logger
+from supplychain.logging_setup import get_logger, setup_logging
 from supplychain.models import (
     CycleRequest,
     CycleResult,
@@ -187,6 +187,8 @@ def run_cycle(
 ) -> CycleResult:
     """Run one complete five-agent decision cycle per (sku_id, warehouse_id)."""
     settings = get_settings()
+    if not structlog.is_configured():
+        setup_logging(log_level=settings.log_level)
     enable_langsmith(settings)
     cycle_id = cycle_id or _generate_cycle_id()
 

@@ -51,20 +51,97 @@
 ## Quickstart (Copy-Paste)
 
 ### Prerequisites
-- Linux / WSL2 Ubuntu or macOS
-- Python 3.13 (`uv` package manager installed: `curl -LsSf https://astral.sh/uv/install.sh | sh`)
-- **Python version**: `pyproject.toml` pins `>=3.13,<3.14`. Python 3.12 will be rejected by `uv sync`. Python 3.14 is also outside the pin; use Python 3.13.
+- Linux / WSL2 Ubuntu, macOS, or Windows
+- Python 3.13 (`uv` package manager installed: `curl -LsSf https://astral.sh/uv/install.sh | sh` on Linux/macOS or `irm https://astral.sh/uv/install.ps1 | iex` on Windows PowerShell)
+- **Automatic Python Provisioning**: `uv` automatically downloads and manages Python 3.13 if not present on your system (`uv python install 3.13` if needed).
+- **Python version**: `pyproject.toml` pins `>=3.13,<3.14`. Python 3.12 and Python 3.14 will be rejected by `uv sync`. Always use Python 3.13.
+
+### Quickstart Commands & Expected Output
+
+#### Linux / macOS / WSL2 (bash)
 
 ```bash
 # 1. Clone the repository
 git clone https://github.com/adwitiya-pandey/multi-agent-supply-chain-system.git
 cd multi-agent-supply-chain-system
 
-# 2. Install dependencies with locked resolution
+# 2. Install dependencies with locked resolution (uv will provision Python 3.13 automatically)
+uv sync
+```
+*Expected output:*
+```text
+Resolved 168 packages in 2ms
+Audited 168 packages in 0.2ms
+```
+
+```bash
+# 3. Configure environment file (offline mode runs out of the box)
+cp .env.example .env
+
+# 4. Build synthetic supply database
+uv run python scripts/build_db.py
+```
+*Expected output:*
+```text
+Database successfully built at data/supply.db for scenario S01
+```
+
+```bash
+# 5. Run the 10 scenarios offline (writes to reports/scenario_results.md)
+uv run python scripts/run_scenarios.py --mode oracle --out reports/scenario_results.md
+```
+*Expected output:*
+```text
+Running 10 scenarios in mode='oracle'...
+{"scenario_id": "S01", "event": "cycle_started", "sku_id": "SKU0001", "cycle_id": "CYC-...", "warehouse_id": "WH-N", "level": "info", "timestamp": "..."}
+[S01] Normal replenishment                -> Status: PENDING_APPROVAL Level: STANDARD (0.27s)
+[S02] Primary supplier insolvent          -> Status: PENDING_APPROVAL Level: SENIOR   (0.40s)
+[S03] Demand spike                        -> Status: PENDING_APPROVAL Level: SENIOR   (0.25s)
+[S04] Conflicting forecasts               -> Status: PENDING_APPROVAL Level: SENIOR   (0.28s)
+[S05] Supplier delay plus hostile note    -> Status: PENDING_APPROVAL Level: SENIOR   (0.23s)
+[S06] Stockout                            -> Status: PENDING_APPROVAL Level: SENIOR   (0.21s)
+[S07] Overstock                           -> Status: NO_ACTION_NEEDED Level: STANDARD (0.22s)
+[S08] High-value PO                       -> Status: PENDING_APPROVAL Level: SENIOR   (0.34s)
+[S09] Missing data                        -> Status: BLOCKED          Level: BLOCKED  (0.24s)
+[S10] Malformed LLM output                -> Status: FAILED           Level: BLOCKED  (0.19s)
+
+Scenario results written to: reports/scenario_results.md
+Trace summaries compiled to reports/trace_summary.md and reports/traces/
+```
+
+```bash
+# 6. Generate the token and cost analysis report (writes to reports/cost_report.md)
+uv run python scripts/cost_report.py --out reports/cost_report.md
+```
+*Expected output:*
+```text
+Cost report successfully generated at: reports/cost_report.md
+```
+
+```bash
+# 7. Start the human-in-the-loop Streamlit dashboard
+uv run streamlit run src/supplychain/app.py
+```
+*Expected output:*
+```text
+  You can now view your Streamlit app in your browser.
+
+  Local URL: http://localhost:8501
+  Network URL: http://...
+```
+
+#### Windows (PowerShell)
+
+```powershell
+# 1. Clone the repository
+git clone https://github.com/adwitiya-pandey/multi-agent-supply-chain-system.git
+cd multi-agent-supply-chain-system
+
+# 2. Install dependencies with locked resolution (uv will provision Python 3.13 automatically)
 uv sync
 
 # 3. Configure environment file (offline mode runs out of the box)
-cp .env.example .env
+Copy-Item .env.example .env
 
 # 4. Build synthetic supply database
 uv run python scripts/build_db.py
@@ -79,13 +156,29 @@ uv run python scripts/cost_report.py --out reports/cost_report.md
 uv run streamlit run src/supplychain/app.py
 ```
 
-### Reviewing and Approving a Purchase Order
-1. Open your browser to `http://localhost:8501`.
-2. In the sidebar, type your reviewer name (e.g., `Jane Doe`).
-3. Select Scenario `S01` and click **Run Decision Cycle**.
-4. In the **Pending Approvals** tab, inspect the forecast, inventory plan, draft purchase order, and QA findings.
-5. Click **Approve Purchase Order**.
-6. Switch to the **Decision History** tab to view the finalized, immutable purchase order record.
+### What You Should See in the Streamlit Dashboard (S01 Approval Flow)
+
+Follow this step-by-step checklist to verify the full decision cycle and approval gate in the dashboard (`http://localhost:8501`):
+
+1. **Sidebar Configuration**:
+   - [ ] Mode banner indicates: `⚠️ SCRIPTED DEMO: outputs are deterministic, not Gemini` (or `ℹ️ LIVE MODE` if `LLM_MODE=gemini`).
+   - [ ] Under **Reviewer Profile**, enter your name (default: `Alice Reviewer`).
+   - [ ] Under **Trigger Pipeline Cycle**, select Scenario `S01` (SKU `SKU0001`, Warehouse `WH-N`).
+   - [ ] Click **Run Decision Cycle**; verify a spinner displays `Executing 5-agent decision cycle...`, followed by a green toast: `Cycle completed: CYC-XXXXXXXX-XXXX (PENDING_APPROVAL)`.
+
+2. **Pending Approvals Tab (`📋 Pending Approvals`)**:
+   - [ ] Select the newly created cycle from the dropdown.
+   - [ ] **Cycle Overview Metrics**: Status `PENDING_APPROVAL`, Scenario `S01`, Policy Level `STANDARD`, Final Level `STANDARD`.
+   - [ ] **Expander 1 (Demand Forecast)**: Daily Demand Mean `10.000` (Method A: `10.000`, Method B: `10.000`), Coverage `100.0%`, Confidence `0.90`, Flags: `None`.
+   - [ ] **Expander 2 (Inventory Position & Reorder Plan)**: On-Hand `50`, Safety Stock `19`, Reorder Point `89`, Needed Quantity `109`, Action `ORDER`, Urgency `NORMAL`, Planned Supplier `SUP001`.
+   - [ ] **Expander 3 (Supplier Selection & Draft Purchase Order)**: Chosen Supplier `SUP001`, Order Quantity `100 units` (rounded to supplier pack size 20, MOQ 50), Unit Cost `$32.79`, Total PO Value `$3,279.00`, Requested Delivery Date, Vendor Email Preview.
+   - [ ] **Expander 4 (Quality Assurance & Consistency Audit)**: QA Verdict `PASS`, Success banner: `All automated consistency rules passed with 0 findings.`
+   - [ ] **Expander 5 (Token Usage & Notional Cost)**: 5 agents executed with token counts and notional cost (~`$0.002400`).
+
+3. **Human Decision Gate**:
+   - [ ] Click the primary **Approve Purchase Order** button.
+   - [ ] Verify the success banner: `Successfully APPROVED! Purchase Order PO-XXXXXXXX-XXXX finalized.`
+   - [ ] Switch to the **Decision History (`📜 Decision History`)** tab to confirm the immutable record is stored in `app.db` with the reviewer name and approval timestamp.
 
 ---
 
@@ -149,6 +242,28 @@ Every scenario exercises specific business anomalies and security attacks:
 
 ---
 
+## Structured Logging
+
+The pipeline uses `structlog` to emit JSON-formatted logs both to standard output and to `logs/app.log`. All log entries pass through `sanitize_log_event()` to strictly enforce the security boundary (SPEC Section 14).
+
+### Real Runtime Sample Line
+```json
+{"scenario_id": "S01", "event": "cycle_started", "sku_id": "SKU0001", "cycle_id": "CYC-20261027-1156", "warehouse_id": "WH-N", "level": "info", "timestamp": "2026-10-27T11:58:19.636999Z"}
+```
+
+In error scenarios (such as S10 malformed output), the error is truncated to avoid leaking raw input payloads:
+```json
+{"error": "ValidationError: 18 validation error(s); first: Field required", "event": "cycle_failed", "sku_id": "SKU0010", "cycle_id": "CYC-20261027-2295", "warehouse_id": "WH-N", "level": "error", "timestamp": "2026-10-27T11:58:22.982739Z"}
+```
+
+### Log Fields
+- **Standard fields**: `timestamp` (ISO-8601 UTC), `level` (`info`, `error`, `warning`, `debug`), `event` (`cycle_started`, `cycle_failed`, `budget_exceeded`).
+- **Context variables** (bound per cycle via `structlog.contextvars`): `cycle_id`, `sku_id`, `warehouse_id`.
+- **Permitted domain fields**: `scenario_id`, `error`, `agent`, `task`, `supplier_id`, `po_id`, `status`, `policy_level`, `final_level`, `verdict`, `decision`, `reviewer`, `prompt_tokens`, `completion_tokens`, `total_tokens`, `cost_usd`, `budget_usd`, `duration_seconds`, `code`, `severity`, `finding_codes`, `sha256`, `count`, `retries`, `success`, `on_hand`, `on_order`, `reorder_point`, `target_level`, `safety_stock`, `needed_qty`, `qty`, `unit_cost`, `total`, `is_primary`, `moq`, `pack_size`, `lead_time_days`.
+- **Forbidden fields** (automatically filtered and never logged): `note`, `notes`, `supplier_notes`, `reviewer_note`, `reviewer_notes`, `body`, `email_body`, `prompt`, `prompts`, `rationale`, `summary`, `gemini_api_key`, `api_key`, `secret`, `password`, `token`.
+
+---
+
 ## Security Architecture Summary
 
 1. **Deterministic Numbers**: Forecasts, safety stock, reorder points, order quantities, pack rounding, and PO totals come exclusively from `planning.py` and `checks.py`. Guardrails recalculate and fail-closed if LLM text disagrees.
@@ -191,7 +306,6 @@ Every scenario exercises specific business anomalies and security attacks:
 │   └── traces/                      # Detailed per-cycle trace spans (snapshots)
 ├── pyproject.toml                   # Project metadata and locked dependency pins
 ├── README.md                        # Master documentation
-├── reports/                         # Generated by scripts (gitignored; safe to delete)
 ├── scripts/
 │   ├── build_db.py                  # Ground truth SQLite database builder
 │   ├── cost_report.py               # Aggregated cost reporting script
@@ -218,7 +332,7 @@ Every scenario exercises specific business anomalies and security attacks:
 │   ├── tasks.py                     # Sequential CrewAI task definitions
 │   ├── tools.py                     # Parameterized read-only agent tools
 │   └── tracing.py                   # LangSmith OpenTelemetry hook and local trace spans
-└── tests/                           # 168 unit, scenario, UI, and boundary tests
+└── tests/                           # 171 unit, scenario, UI, and boundary tests
 ```
 
 ---

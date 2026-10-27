@@ -13,6 +13,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from scripts.build_db import build_database
 from supplychain.config import get_settings
+from supplychain.logging_setup import setup_logging
 from supplychain.models import CycleRequest
 from supplychain.pipeline import run_cycle
 from supplychain.tracing import generate_trace_summary
@@ -24,6 +25,7 @@ def run_all(
     scenario_filter: list[str] | None = None,
 ) -> None:
     """Run all 10 scenarios and write scenario_results.md."""
+    setup_logging(log_level="INFO", log_file="logs/app.log")
     scenarios_dir = Path("data/scenarios")
     all_files = sorted(scenarios_dir.glob("S*.json"))
 
