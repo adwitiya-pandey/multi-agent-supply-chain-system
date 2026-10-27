@@ -17,6 +17,9 @@ logs/
 .crewai/
 storage/
 
+# Generated reports (scripts write here by default; not tracked)
+reports/
+
 # Private notes and Windows download junk
 PLAN-PRIVATE.md
 *Zone.Identifier

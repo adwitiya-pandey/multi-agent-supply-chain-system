@@ -20,7 +20,7 @@ from supplychain.tracing import generate_trace_summary
 
 def run_all(
     mode: str = "oracle",
-    output_path: Path | str = "docs/scenario_results.md",
+    output_path: Path | str = "reports/scenario_results.md",
     scenario_filter: list[str] | None = None,
 ) -> None:
     """Run all 10 scenarios and write scenario_results.md."""
@@ -167,11 +167,12 @@ def run_all(
     # Generate structured local trace summaries
     trace_file = Path("logs/langsmith_traces.jsonl")
     if trace_file.exists():
-        generate_trace_summary(trace_path=trace_file, summary_path="docs/trace_summary.md")
-        traces_dir = Path("docs/traces")
+        out_dir = Path(output_path).parent
+        generate_trace_summary(trace_path=trace_file, summary_path=out_dir / "trace_summary.md")
+        traces_dir = out_dir / "traces"
         traces_dir.mkdir(parents=True, exist_ok=True)
         generate_trace_summary(trace_path=trace_file, summary_path=traces_dir / "summary.md")
-        print("Trace summaries compiled to docs/trace_summary.md and docs/traces/")
+        print(f"Trace summaries compiled to {out_dir / 'trace_summary.md'} and {traces_dir}/")
 
 
 def main() -> None:
@@ -189,8 +190,8 @@ def main() -> None:
     )
     parser.add_argument(
         "--out",
-        default="docs/scenario_results.md",
-        help="Output markdown file path.",
+        default="reports/scenario_results.md",
+        help="Output markdown file path (default: reports/scenario_results.md).",
     )
     parser.add_argument(
         "--scenario",
