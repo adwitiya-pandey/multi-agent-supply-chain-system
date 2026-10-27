@@ -12,30 +12,158 @@
 
 ## Architecture Diagram
 
-```
- scenario JSON ─► build_db ─► data/supply.db (opened read-only: mode=ro + query_only + authorizer)
-                                   │
- run_cycle(request, cycle_id) ─────┼───────────────────────────────────────────────┐
-   structlog contextvars: cycle_id │                                               │
-                                   ▼                                               │
-   ┌───────────────────────── Crew (Process.sequential, one LLM instance per agent)┤
-   │ 1 Forecast ─► ForecastMessage   guardrail: numbers == tool recomputation      │
-   │ 2 Inventory ─► InventoryPlanMessage   guardrail: numbers == planning.py       │
-   │ 3 Supplier ─► SupplierMessage (PO draft + email)  guardrail: terms, qty, $    │
-   │ 4 QA ─► QAReport   guardrail: contains every rule finding (checks.py)          │
-   │ 5 Escalation ─► EscalationDecision                                             │
-   └─ task_callback: CostGuard (per-agent tokens × price) raises BudgetExceeded ────┘
-                                   │
-                                   ▼
-        policy.py (deterministic floor)  ──►  final level = max(policy, LLM)
-                                   │
-              status: PENDING_APPROVAL | BLOCKED | NO_ACTION_NEEDED | FAILED | BUDGET_EXCEEDED
-                                   │  (cycle saved to app.db, audit line written)
-                                   ▼
-      Streamlit dashboard ── reviewer approves / rejects ──► approvals.py (deterministic)
-                                   │                          finalise_po(): append-only `purchase_orders`
-                                   ▼
-                     audit/audit.jsonl   +   logs (JSON, structlog)   +   LangSmith traces (optional)
+```mermaid
+flowchart TD
+    %% -------------------------------------------------------------------------
+    %% Class Styles
+    %% -------------------------------------------------------------------------
+    classDef ingress fill:#e0f2fe,stroke:#0284c7,stroke-width:1.5px,color:#0f172a;
+    classDef trigger fill:#e0e7ff,stroke:#4f46e5,stroke-width:1.5px,color:#0f172a;
+    classDef agent fill:#ede9fe,stroke:#7c3aed,stroke-width:1.5px,color:#0f172a;
+    classDef guardrail fill:#dcfce7,stroke:#16a34a,stroke-width:1.5px,color:#0f172a;
+    classDef policy fill:#fef3c7,stroke:#d97706,stroke-width:1.5px,color:#0f172a;
+    classDef blocked fill:#fee2e2,stroke:#dc2626,stroke-width:1.5px,color:#0f172a;
+    classDef hitl fill:#fae8ff,stroke:#a855f7,stroke-width:1.5px,color:#0f172a;
+    classDef storage fill:#f1f5f9,stroke:#475569,stroke-width:1.5px,color:#0f172a;
+
+    %% -------------------------------------------------------------------------
+    %% 1. Ingress & Read-Only Ground Truth
+    %% -------------------------------------------------------------------------
+    subgraph LayerIngress ["1. Ingress & Read-Only Ground Truth"]
+        direction TB
+        S_Scenarios["Scenario Contracts<br/>data/scenarios/S01..S10.json"]
+        S_BuildDB["Database Builder<br/>scripts/build_db.py"]
+        S_SupplyDB[("data/supply.db (Read-Only Ground Truth)<br/>3-Layer Security: mode=ro | PRAGMA query_only=ON | SQLite Authorizer")]
+        S_Sanitize["sanitize.py (Ingress Sanitizer)<br/>Untrusted Text Tagging & Prompt Injection Defense"]
+
+        S_Scenarios --> S_BuildDB --> S_SupplyDB
+        S_SupplyDB -.-> S_Sanitize
+    end
+
+    %% -------------------------------------------------------------------------
+    %% 2. Cycle Entry Point
+    %% -------------------------------------------------------------------------
+    P_RunCycle["run_cycle(request, cycle_id)<br/>Contextvars: cycle_id, sku_id, warehouse_id"]
+
+    %% -------------------------------------------------------------------------
+    %% 3. CrewAI 5-Agent Cognitive Pipeline
+    %% -------------------------------------------------------------------------
+    subgraph LayerCrewAI ["2. CrewAI Sequential Cognitive Pipeline (Process.sequential)"]
+        direction TB
+
+        A1["1. Demand Forecaster<br/>Tools: get_demand_stats, get_market_signals"]
+        G1{"Guardrail 1: Statistics Check<br/>ForecastMessage numbers == recomputed stats"}
+
+        A2["2. Inventory Planner<br/>Tools: get_inventory_position, calculate_reorder_plan"]
+        G2{"Guardrail 2: Deterministic Math<br/>InventoryPlanMessage == planning.py formulas"}
+
+        A3["3. Supplier Liaison<br/>Tools: get_supplier_options"]
+        G3{"Guardrail 3: Terms & Pack Sizing<br/>SupplierMessage: vendor active, MOQ, pack, total"}
+
+        A4["4. Quality Assurance<br/>Tools: run_consistency_checks"]
+        G4{"Guardrail 4: QA Consistency Rules<br/>QAReport contains all QA01..QA14 findings"}
+
+        A5["5. Escalation Manager<br/>Pure Reasoning: Risk & Confidence Evaluation"]
+        M5["EscalationDecision<br/>Suggests STANDARD, SENIOR, or EXECUTIVE"]
+
+        CB_CostGuard["task_callback: CostGuard<br/>Per-agent token tracking × pricing<br/>Budget Ceiling: $0.50 per cycle"]
+
+        A1 -->|Emits| G1
+        G1 -->|Pydantic Message| A2
+        A2 -->|Emits| G2
+        G2 -->|Pydantic Message| A3
+        A3 -->|Emits| G3
+        G3 -->|Pydantic Message| A4
+        A4 -->|Emits| G4
+        G4 -->|Pydantic Message| A5
+        A5 -->|Emits| M5
+    end
+
+    %% -------------------------------------------------------------------------
+    %% 4. Deterministic Policy Floor & Outcome Routing
+    %% -------------------------------------------------------------------------
+    subgraph LayerPolicy ["3. Deterministic Policy Floor & Outcome Routing"]
+        direction TB
+        Pol_Floor["src/supplychain/policy.py<br/>Deterministic Escalation Floor"]
+        Pol_Max["final_level = max(policy_level, llm_level)<br/>Safety: LLM can only raise caution, never lower"]
+        Pol_Router{"Cycle Status Router"}
+
+        Status_Terminal["BLOCKED | FAILED | BUDGET_EXCEEDED | NO_ACTION_NEEDED<br/>Cycle saved to app.db (Approval disabled)"]
+        Status_Pending["PENDING_APPROVAL<br/>Replenishment PO drafted for reviewer"]
+
+        Pol_Floor -->|policy_level| Pol_Max
+        Pol_Max --> Pol_Router
+        Pol_Router -->|Terminal or No Action| Status_Terminal
+        Pol_Router -->|Replenishment Order| Status_Pending
+    end
+
+    %% -------------------------------------------------------------------------
+    %% 5. Human-in-the-Loop Approval Gate (AST Boundary)
+    %% -------------------------------------------------------------------------
+    subgraph LayerHITL ["4. Human-in-the-Loop Approval Gate (AST-Enforced Boundary)"]
+        direction TB
+        UI_Streamlit["Streamlit Dashboard (src/supplychain/app.py)<br/>Reviewer inspects metrics, PO draft, vendor email, QA"]
+        UI_Decision{"Human Decision Gate"}
+        UI_Reject["Decision: REJECTED<br/>Reviewer note captured in app.db"]
+        UI_Approve["Decision: APPROVED<br/>Reviewer identity validated"]
+
+        App_Module["src/supplychain/approvals.py (Deterministic Logic)<br/>AST Boundary: Never imported by CrewAI/agents"]
+        App_Finalise["store.finalise_po()<br/>Appends immutable purchase order"]
+
+        UI_Streamlit --> UI_Decision
+        UI_Decision -->|Reject| UI_Reject
+        UI_Decision -->|Approve| UI_Approve
+        UI_Approve --> App_Module --> App_Finalise
+    end
+
+    %% -------------------------------------------------------------------------
+    %% 6. Immutable Persistence & Observability
+    %% -------------------------------------------------------------------------
+    subgraph LayerStorage ["5. Immutable Persistence & Observability Layer"]
+        direction TB
+        DB_App[("data/app.db (SQLite Event Store)<br/>Append-Only: cycles, human_decisions, purchase_orders<br/>SQL Triggers reject UPDATE and DELETE with ABORT")]
+        Obs_Audit["audit/audit.jsonl<br/>Fail-Closed Structured JSONL Audit Log"]
+        Obs_Logs["logs/app.log<br/>Context-Bound Sanitized JSON Logs (structlog)"]
+        Obs_Traces["Observability & Tracing<br/>LangSmith OTel Hook & Local Trace Spans"]
+    end
+
+    %% -------------------------------------------------------------------------
+    %% Cross-Layer Edges
+    %% -------------------------------------------------------------------------
+    P_RunCycle --> A1
+    S_SupplyDB -.->|Read-Only Queries| A1
+    S_SupplyDB -.->|Read-Only Queries| A2
+    S_SupplyDB -.->|Read-Only Queries| A3
+    S_SupplyDB -.->|Read-Only Queries| A4
+
+    G4 -->|Deterministic Findings| Pol_Floor
+    M5 -->|llm_level| Pol_Max
+
+    CB_CostGuard -.->|Halts cycle on breach| Status_Terminal
+
+    Status_Pending --> UI_Streamlit
+    Status_Terminal --> DB_App
+    Status_Terminal --> Obs_Audit
+
+    UI_Reject --> DB_App
+    UI_Reject --> Obs_Audit
+    App_Finalise --> DB_App
+    App_Finalise --> Obs_Audit
+
+    P_RunCycle -.-> Obs_Logs
+    P_RunCycle -.-> Obs_Traces
+
+    %% -------------------------------------------------------------------------
+    %% Class Assignments
+    %% -------------------------------------------------------------------------
+    class S_Scenarios,S_BuildDB,S_SupplyDB,S_Sanitize ingress;
+    class P_RunCycle trigger;
+    class A1,A2,A3,A4,A5 agent;
+    class G1,G2,G3,G4,M5,CB_CostGuard guardrail;
+    class Pol_Floor,Pol_Max,Pol_Router,Status_Pending policy;
+    class Status_Terminal blocked;
+    class UI_Streamlit,UI_Decision,UI_Reject,UI_Approve,App_Module,App_Finalise hitl;
+    class DB_App,Obs_Audit,Obs_Logs,Obs_Traces storage;
 ```
 
 ---
