@@ -29,7 +29,7 @@ from supplychain.db import (
     get_sales_window,
     get_supplier_options,
 )
-from supplychain.logging_setup import get_logger
+from supplychain.logging_setup import get_logger, setup_logging
 from supplychain.models import (
     CycleRequest,
     CycleResult,
@@ -187,6 +187,8 @@ def run_cycle(
 ) -> CycleResult:
     """Run one complete five-agent decision cycle per (sku_id, warehouse_id)."""
     settings = get_settings()
+    if not structlog.is_configured():
+        setup_logging(log_level=settings.log_level)
     enable_langsmith(settings)
     cycle_id = cycle_id or _generate_cycle_id()
 
@@ -337,7 +339,17 @@ def run_cycle(
         OSError,
         APIError,
     ) as exc:
-        logger.error("cycle_failed", error=str(exc))
+        # For ValidationError, log only the class, count, and first 200 chars of
+        # the first error — never the raw input values (AGENTS.md §8, SPEC §9).
+        if isinstance(exc, ValidationError):
+            first_msg = exc.errors()[0]["msg"] if exc.errors() else ""
+            error_summary = (
+                f"{type(exc).__name__}: {exc.error_count()} validation error(s); "
+                f"first: {first_msg[:200]}"
+            )
+        else:
+            error_summary = f"{type(exc).__name__}: {exc}"
+        logger.error("cycle_failed", error=error_summary)
         status = "FAILED"
         policy_lvl = "BLOCKED"
         final_level = "BLOCKED"

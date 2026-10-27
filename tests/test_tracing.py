@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import pytest
 from pydantic import SecretStr
 
 from supplychain.config import Settings
@@ -25,7 +26,22 @@ def test_enable_langsmith_without_api_key():
 
 
 def test_enable_langsmith_enabled_with_key():
-    """When langsmith_tracing is True and api key is present, instruments OpenTelemetry."""
+    """When langsmith_tracing is True and api key is present, instruments OpenTelemetry.
+
+    Skipped automatically when the ``tracing`` optional-dependency group is not
+    installed (langsmith, opentelemetry-instrumentation-crewai).
+    CI installs the extra via ``uv sync --locked --extra tracing``.
+    """
+    # Skip gracefully when the tracing extra is absent; CI always installs it.
+    pytest.importorskip(
+        "langsmith",
+        reason="tracing extra not installed (run: uv sync --extra tracing)",
+    )
+    pytest.importorskip(
+        "opentelemetry.instrumentation.crewai",
+        reason="tracing extra not installed (run: uv sync --extra tracing)",
+    )
+
     settings = Settings(
         langsmith_tracing=True,
         langsmith_api_key=SecretStr("ls_test_key_12345"),

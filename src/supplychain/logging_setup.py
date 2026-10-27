@@ -71,6 +71,7 @@ PERMITTED_DATA_KEYS = {
     "moq",
     "pack_size",
     "lead_time_days",
+    "error",
 }
 
 STANDARD_STRUCTLOG_KEYS = {

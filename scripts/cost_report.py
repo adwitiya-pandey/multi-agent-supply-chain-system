@@ -15,7 +15,7 @@ from supplychain.store import list_all_cycles
 
 def generate_cost_report(
     db_path: str | Path | None = None,
-    output_path: str | Path = "docs/cost_report.md",
+    output_path: str | Path = "reports/cost_report.md",
 ) -> None:
     """Generate cost and token analysis markdown report from stored cycles in app.db."""
     cycles = list_all_cycles(db_path)
@@ -129,7 +129,11 @@ def generate_cost_report(
 def main() -> None:
     parser = argparse.ArgumentParser(description="Generate supply chain cost & token usage report.")
     parser.add_argument("--db", default=None, help="Path to app.db SQLite file.")
-    parser.add_argument("--out", default="docs/cost_report.md", help="Output markdown path.")
+    parser.add_argument(
+        "--out",
+        default="reports/cost_report.md",
+        help="Output markdown path (default: reports/cost_report.md).",
+    )
     args = parser.parse_args()
 
     generate_cost_report(db_path=args.db, output_path=args.out)
