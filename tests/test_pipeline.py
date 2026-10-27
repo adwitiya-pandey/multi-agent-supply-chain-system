@@ -2,6 +2,7 @@
 
 import sqlite3
 from pathlib import Path
+from unittest.mock import patch
 
 from scripts.build_db import build_database
 from supplychain.models import CycleRequest
@@ -120,3 +121,42 @@ def test_task_sequence_and_agent_assignment():
     for task, (agent_key, expected_role) in zip(tasks, expected_sequence, strict=True):
         assert task.agent == agents[agent_key]
         assert task.agent.role == expected_role
+
+
+def test_s10_validation_error_log_is_truncated(tmp_path: Path, monkeypatch):
+    """S10 fault mode: logged error must not exceed 300 chars and must not dump raw input.
+
+    AGENTS.md §8: 'never log [raw validation input]'.  The fix in pipeline.py formats
+    ValidationError as '<class>: <N> validation error(s); first: <first_msg[:200]>'.
+    """
+    supply_db = tmp_path / "supply.db"
+    app_db = tmp_path / "app.db"
+    audit_file = tmp_path / "audit.jsonl"
+
+    build_database(supply_db, scenario_id="S10")
+
+    monkeypatch.setenv("SUPPLY_DB", str(supply_db))
+    monkeypatch.setenv("APP_DB", str(app_db))
+    monkeypatch.setenv("AUDIT_PATH", str(audit_file))
+
+    logged_errors: list[str] = []
+
+    def capture_error(event: str, **kw: object) -> None:  # type: ignore[return]
+        if "error" in kw:
+            logged_errors.append(str(kw["error"]))
+
+    with patch("supplychain.pipeline.logger") as mock_log:
+        mock_log.error.side_effect = capture_error
+        req = CycleRequest(scenario_id="S10", sku_id="SKU0010", warehouse_id="WH-N")
+        result = run_cycle(req, mode="oracle", fault_mode="invalid_json")
+
+    assert result.status == "FAILED"
+
+    # At least one error must have been logged
+    assert logged_errors, "No error was logged during S10 FAILED cycle"
+
+    for err in logged_errors:
+        # Must not be a raw 3 KB pydantic dump; capped summary is well under 500 chars
+        assert len(err) < 500, f"Logged error is too large ({len(err)} chars): {err[:120]!r}"
+        # Must not contain raw Python repr of validation input values (pydantic dumps "input=...")
+        assert "input=" not in err, f"Raw validation input leaked into log: {err[:120]!r}"
